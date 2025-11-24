@@ -21,7 +21,7 @@ loading() {
     printf "\r%s %s%s%s" "$LOADING" "$text" "$(printf "%.${i}s" "...")" "   "
     i=$(( (i+1) % 4 ))
     sleep 0.2
-    [[ -v done ]] && break
+    [ "${done+set}" = "set" ] && break
   done
   printf "\r%s %s%s%s\n" "$CHECK" "$text" "   " "   "
 }
