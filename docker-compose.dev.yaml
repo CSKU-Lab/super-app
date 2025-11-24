@@ -81,7 +81,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql # Persist data
-      - ./setup_scripts/postgres/:/setup_scripts/
+      - ./scripts/postgres/:/scripts/
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -140,7 +140,7 @@ services:
       - MONGO_TASK_DB=${MONGO_TASK_DB:-task_server}
     volumes:
       - mongo_data:/data/db
-      - ./setup_scripts/mongo:/setup_scripts/
+      - ./scripts/mongo:/scripts/
     healthcheck:
       test:
         [

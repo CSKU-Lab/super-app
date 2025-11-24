@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -a
 
 source <(doppler secrets download --no-file --format env)
