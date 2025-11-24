@@ -50,8 +50,8 @@ is_healthy() {
   fi
 
   for container_id in $container_ids; do
-    local status=$(docker inspect "$container_id" --format='{{json .State.Health.Status}}')
-    if [ "$status" == '"healthy"' ]; then
+    local health_status=$(docker inspect "$container_id" --format='{{json .State.Health.Status}}')
+    if [ "$health_status" = '"healthy"' ]; then
       return 0 # Healthy (at least one container is healthy)
     fi
   done
@@ -63,7 +63,7 @@ is_healthy() {
 ALL_HEALTHY=false
 while [ "$ALL_HEALTHY" = false ]; do
   ALL_HEALTHY=true
-  for service in $SERVICES; do
+  for service in ${(f)SERVICES}; do
     if ! is_healthy "$service"; then
       ALL_HEALTHY=false
       echo "Service '$service' is not yet healthy. Waiting..."
