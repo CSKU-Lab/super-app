@@ -1,0 +1,6 @@
+[submodule "main-server"]
+	path = main-server
+	url = git@github.com:CSKU-Lab/main-server
+[submodule "go-grader"]
+	path = go-grader
+	url = git@github.com:CSKU-Lab/go-grader
