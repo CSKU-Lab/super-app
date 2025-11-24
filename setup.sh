@@ -111,7 +111,7 @@ echo "Step 4: Creating S3 Access ID and Secret Key"
 echo "-----------------------------------------------------------------------------"
 done=false
 loading "Creating S3 Access ID and Secret Key..."
-docker run --rm -v ./scripts/minio:/scripts --network super_default -e MINIO_ROOT_USER=$MINIO_ROOT_USER -e MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD -e MAIN_SERVER_S3_ACCESS_KEY_ID=$MAIN_SERVER_S3_ACCESS_KEY_ID -e MAIN_SERVER_S3_SECRET_ACCESS_KEY=$MAIN_SERVER_S3_SECRET_ACCESS_KEY --entrypoint /scripts/01-create-access-id-and-secret-key.sh minio/mc
+docker run --rm -v ./scripts/minio:/scripts --network super-app_default -e MINIO_ROOT_USER=$MINIO_ROOT_USER -e MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD -e MAIN_SERVER_S3_ACCESS_KEY_ID=$MAIN_SERVER_S3_ACCESS_KEY_ID -e MAIN_SERVER_S3_SECRET_ACCESS_KEY=$MAIN_SERVER_S3_SECRET_ACCESS_KEY --entrypoint /scripts/01-create-access-id-and-secret-key.sh minio/mc
 done=true
 echo "${CHECK} Created S3 Access ID and Secret Key"
 
