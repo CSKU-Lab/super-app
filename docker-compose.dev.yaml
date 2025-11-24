@@ -1,6 +1,10 @@
 services:
   main-server:
-    image: cskulab/main-server:sha-e45a921
+    build:
+      context: ./main-server/
+      dockerfile: docker/Dockerfile.dev
+    volumes:
+      - ./main-server/:/app
     ports:
       - "8080:8080"
     environment:
@@ -20,22 +24,33 @@ services:
       - S3_BUCKET=${MAIN_SERVER_S3_BUCKET}
       - S3_ENDPOINT=${MAIN_SERVER_S3_ENDPOINT}
       - S3_FRONTEND_URL=${MAIN_SERVER_S3_FRONTEND_URL}
+      - CONFIG_SERVER_URL=${MAIN_SERVER_CONFIG_SERVER_URL}
+      - GRADER_SERVER_URL=${MAIN_SERVER_GRADER_SERVER_URL}
     depends_on:
       db:
         condition: service_healthy
   config-server:
-    image: cskulab/config-server:sha-98d3ea3
+    build:
+      context: ./config-server/
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./config-server/:/app
     environment:
       - MONGO_URI=${CONFIG_SERVER_MONGO_URI:-mongodb://config_server:config_password@mongo:27017/config_server}
       - PORT=${CONFIG_SERVER_PORT:-8081}
       - DATABASE_NAME=${MONGO_CONFIG_DB}
+      - ENV=docker
     ports:
       - "8081:8081"
     depends_on:
       mongo:
         condition: service_healthy
   task-server:
-    image: cskulab/task-server:sha-2256055
+    build:
+      context: ./task-server/
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./task-server/:/app
     environment:
       - MONGO_URI=${TASK_SERVER_MONGO_URI:-mongodb://task_server:task_password@mongo:27017/task_server}
       - PORT=${TASK_SERVER_PORT:-8082}
@@ -46,18 +61,27 @@ services:
       mongo:
         condition: service_healthy
   go-grader-master:
-    image: cskulab/go-grader-master:sha-87283c1
+    build:
+      context: ./go-grader/
+      dockerfile: docker/master/Dockerfile.dev
+    volumes:
+      - ./go-grader/:/app
     environment:
       - DATABASE_URL=${GO_GRADER_DATABASE_URL}
       - RBMQ_SERVER_URL=${GO_GRADER_RBMQ_SERVER_URL}
       - PORT=${GO_GRADER_PORT}
+      - ENV=docker
     ports:
       - "8083:8083"
     depends_on:
       rabbitmq:
         condition: service_healthy
   go-grader-worker:
-    image: cskulab/go-grader-worker:sha-87283c1
+    build:
+      context: ./go-grader/
+      dockerfile: docker/worker/Dockerfile.dev
+    volumes:
+      - ./go-grader/:/app
     environment:
       - ENV=docker
       - CONFIG_SERVER_URL=${GO_GRADER_CONFIG_SERVER_URL}

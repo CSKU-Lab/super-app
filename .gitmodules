@@ -4,3 +4,9 @@
 [submodule "go-grader"]
 	path = go-grader
 	url = git@github.com:CSKU-Lab/go-grader
+[submodule "config-server"]
+	path = config-server
+	url = git@github.com:CSKU-Lab/config-server
+[submodule "task-server"]
+	path = task-server
+	url = git@github.com:CSKU-Lab/task-server
