@@ -87,7 +87,7 @@ echo "Step 2: Creating Postgres users and databases"
 echo "-----------------------------------------------------------------------------"
 done=false
 loading "Creating Postgres users and databases..."
-docker compose -f docker-compose.dev.yaml exec -T db bash /setup_scripts/01-create-databases.sh
+docker compose -f docker-compose.dev.yaml exec -T db bash /scripts/01-create-databases.sh
 done=true
 echo "${CHECK} Created Postgres users and databases"
 
@@ -99,7 +99,7 @@ echo "Step 3: Creating MongoDB users"
 echo "-----------------------------------------------------------------------------"
 done=false
 loading "Creating MongoDB users..."
-docker compose -f docker-compose.dev.yaml exec -T mongo bash /setup_scripts/01-init-users.sh
+docker compose -f docker-compose.dev.yaml exec -T mongo bash /scripts/01-init-users.sh
 done=true
 echo "${CHECK} Created MongoDB users"
 
@@ -111,7 +111,7 @@ echo "Step 4: Creating S3 Access ID and Secret Key"
 echo "-----------------------------------------------------------------------------"
 done=false
 loading "Creating S3 Access ID and Secret Key..."
-docker run --rm -v ./setup_scripts/minio:/setup_scripts --network super_default -e MINIO_ROOT_USER=$MINIO_ROOT_USER -e MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD -e MAIN_SERVER_S3_ACCESS_KEY_ID=$MAIN_SERVER_S3_ACCESS_KEY_ID -e MAIN_SERVER_S3_SECRET_ACCESS_KEY=$MAIN_SERVER_S3_SECRET_ACCESS_KEY --entrypoint /setup_scripts/01-create-access-id-and-secret-key.sh minio/mc
+docker run --rm -v ./scripts/minio:/scripts --network super_default -e MINIO_ROOT_USER=$MINIO_ROOT_USER -e MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD -e MAIN_SERVER_S3_ACCESS_KEY_ID=$MAIN_SERVER_S3_ACCESS_KEY_ID -e MAIN_SERVER_S3_SECRET_ACCESS_KEY=$MAIN_SERVER_S3_SECRET_ACCESS_KEY --entrypoint /scripts/01-create-access-id-and-secret-key.sh minio/mc
 done=true
 echo "${CHECK} Created S3 Access ID and Secret Key"
 
@@ -141,6 +141,17 @@ loading "Seeding Main server data..."
 (DATABASE_URL=$(echo "$MAIN_SERVER_DATABASE_URL" | sed 's/db/localhost/g'); cd main-server && go run cmd/seed/seed.go >> /dev/null)
 done=true
 echo "${CHECK} Seeded Main server data"
+
+
+echo "-----------------------------------------------------------------------------"
+echo "Step 7: Start remaining services"
+echo "-----------------------------------------------------------------------------"
+done=false
+loading "Starting remaining services..."
+docker compose -f docker-compose.dev.yaml up -d >> /dev/null
+done=true
+echo "${CHECK} All remaining services started"
+
 
 echo "Ready to go!"
 
