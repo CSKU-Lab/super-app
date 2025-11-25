@@ -107,7 +107,7 @@ echo "${CHECK} Created MongoDB users"
 # Step 4: Create S3 Access ID and Secret Key
 # -----------------------------------------------------------------------------
 echo "-----------------------------------------------------------------------------"
-echo "Step 4: Creating S3 Access ID and Secret Key"
+echo "Step 4.1: Creating S3 Access ID and Secret Key"
 echo "-----------------------------------------------------------------------------"
 done=false
 loading "Creating S3 Access ID and Secret Key..."
@@ -115,8 +115,16 @@ docker run --rm -v ./scripts/minio:/scripts --network super-app_default -e MINIO
 done=true
 echo "${CHECK} Created S3 Access ID and Secret Key"
 
-echo "Finished setting up infrastructure."
+echo "-----------------------------------------------------------------------------"
+echo "Step 4.2: Public S3 Access Policy"
+echo "-----------------------------------------------------------------------------"
+done=false
+loading "Public S3 Access Policy..."
+docker run --rm -v ./scripts/minio:/scripts --network super-app_default -e MINIO_ROOT_USER=$MINIO_ROOT_USER -e MINIO_ROOT_PASSWORD=$MINIO_ROOT_PASSWORD -e MAIN_SERVER_S3_ACCESS_KEY_ID=$MAIN_SERVER_S3_ACCESS_KEY_ID -e MAIN_SERVER_S3_SECRET_ACCESS_KEY=$MAIN_SERVER_S3_SECRET_ACCESS_KEY --entrypoint /scripts/02-add-bucket-public-policy.sh minio/mc
+done=true
+echo "${CHECK} Public S3 Access Policy created"
 
+echo "Finished setting up infrastructure."
 # -----------------------------------------------------------------------------
 # Step 5: Migrate Postgres databases
 # -----------------------------------------------------------------------------
