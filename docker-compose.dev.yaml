@@ -57,6 +57,7 @@ services:
       - PORT=${TASK_SERVER_PORT:-8082}
       - DATABASE_NAME=${MONGO_TASK_DB}
       - ENV=docker
+      - GRADER_SERVER_URL=${MAIN_SERVER_GRADER_SERVER_URL}
     ports:
       - "8082:8082"
     depends_on:
