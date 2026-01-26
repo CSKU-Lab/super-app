@@ -10,3 +10,6 @@
 [submodule "task-server"]
 	path = task-server
 	url = git@github.com:CSKU-Lab/task-server
+[submodule "isolate-docker"]
+	path = isolate-docker
+	url = git@github.com:CSKU-Lab/isolate-docker

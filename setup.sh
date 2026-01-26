@@ -134,7 +134,6 @@ echo "--------------------------------------------------------------------------
 done=false
 loading "Migrating Postgres databases..."
 (DATABASE_URL=$(echo "$MAIN_SERVER_DATABASE_URL" | sed 's/db/localhost/g'); cd main-server && ./scripts/migrate.sh --auto-approve >> /dev/null)
-(DATABASE_URL=$(echo "$GO_GRADER_DATABASE_URL" | sed 's/db/localhost/g'); cd go-grader && ./scripts/migrate.sh --auto-approve >> /dev/null)
 done=true
 echo "${CHECK} Migrated Postgres databases"
 
