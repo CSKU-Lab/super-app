@@ -111,6 +111,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql # Persist data
       - ./scripts/postgres/:/scripts/
+      - ./data/:/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
