@@ -41,6 +41,7 @@ services:
       - PORT=${CONFIG_SERVER_PORT:-8081}
       - DATABASE_NAME=${MONGO_CONFIG_DB}
       - ENV=docker
+      - TASK_SERVER_URL=${CONFIG_SERVER_TASK_SERVER_URL}
     ports:
       - "8081:8081"
     depends_on:
