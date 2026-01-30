@@ -42,6 +42,7 @@ services:
       - DATABASE_NAME=${MONGO_CONFIG_DB}
       - ENV=docker
       - TASK_SERVER_URL=${CONFIG_SERVER_TASK_SERVER_URL}
+      - GO_GRADER_SERVER_URL=${CONFIG_SERVER_GO_GRADER_SERVER_URL}
     ports:
       - "8081:8081"
     depends_on:
