@@ -27,6 +27,7 @@ services:
       - CONFIG_SERVER_URL=${MAIN_SERVER_CONFIG_SERVER_URL}
       - GRADER_SERVER_URL=${MAIN_SERVER_GRADER_SERVER_URL}
       - TASK_SERVER_URL=${MAIN_SERVER_TASK_SERVER_URL}
+      - RBMQ_SERVER_URL=${MAIN_SERVER_RBMQ_SERVER_URL}
     depends_on:
       db:
         condition: service_healthy
