@@ -110,9 +110,9 @@ services:
     image: postgres:18
     restart: always
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:cs_pg_user}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:cs_pg_password}
-      - POSTGRES_DB=${POSTGRES_DB:main-server}
+      - POSTGRES_USER=${POSTGRES_USER:-cs_pg_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cs_pg_password}
+      - POSTGRES_DB=${POSTGRES_DB:-main-server}
     ports:
       - "5432:5432"
     volumes:
