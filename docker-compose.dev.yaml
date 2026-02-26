@@ -78,7 +78,6 @@ services:
     volumes:
       - ./go-grader/:/app
     environment:
-      - DATABASE_URL=${GO_GRADER_DATABASE_URL}
       - RBMQ_SERVER_URL=${GO_GRADER_RBMQ_SERVER_URL}
       - PORT=${GO_GRADER_PORT}
       - ENV=docker
@@ -96,7 +95,6 @@ services:
       - ./go-grader/:/app
     environment:
       - ENV=docker
-      - DATABASE_URL=${GO_GRADER_DATABASE_URL}
       - CONFIG_SERVER_URL=${GO_GRADER_CONFIG_SERVER_URL}
       - TASK_SERVER_URL=${GO_GRADER_TASK_SERVER_URL}
       - RBMQ_SERVER_URL=${GO_GRADER_RBMQ_SERVER_URL}
@@ -112,10 +110,9 @@ services:
     image: postgres:18
     restart: always
     environment:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_DB
-      - POSTGRES_MULTIPLE_DATABASES
+      - POSTGRES_USER=${POSTGRES_USER:cs_pg_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:cs_pg_password}
+      - POSTGRES_DB=${POSTGRES_DB:main-server}
     ports:
       - "5432:5432"
     volumes:
