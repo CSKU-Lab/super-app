@@ -1,7 +1,7 @@
 ---
 description: Reviews code quality, validates test coverage, and approves PRs for auto-merge
 mode: subagent
-model: opencode/claude-sonnet-4-6
+model: github-copilot/claude-sonnet-4.6
 temperature: 0.1
 ---
 

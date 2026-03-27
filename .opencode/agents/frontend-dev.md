@@ -1,7 +1,7 @@
 ---
 description: Implements React/Next.js components with TypeScript and TailwindCSS
 mode: subagent
-model: opencode/claude-sonnet-4-6
+model: github-copilot/claude-sonnet-4.6
 temperature: 0.2
 ---
 
