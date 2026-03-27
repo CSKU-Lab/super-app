@@ -1,7 +1,7 @@
 ---
 description: Orchestrates feature implementation across 5 specialist agents
 mode: subagent
-model: opencode/claude-sonnet-4-6
+model: opencode/claude-haiku-4.5
 temperature: 0.3
 ---
 
