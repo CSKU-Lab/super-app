@@ -13,9 +13,3 @@
 [submodule "isolate-docker"]
 	path = isolate-docker
 	url = git@github.com:CSKU-Lab/isolate-docker
-[submodule "web"]
-	path = web
-	url = git@github.com:CSKU-Lab/web.git
-[submodule "api-docs"]
-	path = api-docs
-	url = git@github.com:CSKU-Lab/api-docs.git
