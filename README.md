@@ -66,6 +66,22 @@ Infrastructure: PostgreSQL, MongoDB, RabbitMQ, Redis, MinIO
 - **Code Isolation:** Student code runs safely in IOI Isolate containers
 - **Scalable:** Add workers via Docker Compose for horizontal scaling
 
+## Coordinator Agent - Request Work
+
+Use the `@coordinator` agent to request features, bug fixes, and other work. The coordinator creates GitHub issues, routes work to specialists, manages code review, and automates merge decisions.
+
+**Quick Start:**
+```
+@coordinator create issue for: bug - fix compare script selector dropdown
+```
+
+**Documentation:**
+- **COORDINATOR-EXAMPLES.md** - Examples of how to request work (start here!)
+- **COORDINATOR-WORKFLOW.md** - Complete 8-step workflow with diagrams
+- **QA-FEEDBACK-WORKFLOW.md** - QA review and approval process
+- **.opencode/agents/coordinator.md** - Official coordinator agent rules
+- **.opencode/agents/qa-specialist.md** - Official QA specialist rules
+
 ## Documentation
 
 - **AGENTS.md** - Detailed project architecture and patterns (for AI agents)
