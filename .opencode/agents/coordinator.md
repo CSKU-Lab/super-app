@@ -73,27 +73,99 @@ When analyzing a feature request, determine which services are affected:
 
 ## Workflow Steps
 
-1. **Receive Feature Request**
+### ⚠️ CRITICAL: Always Follow Formal Workflow
+
+**NEVER skip GitHub issue creation or specialist routing, even for quick fixes or bug fixes.**
+
+Whether the request is a feature, bug fix, or enhancement:
+1. **ALWAYS create a GitHub issue first**
+2. **ALWAYS route to appropriate specialists** 
+3. **NEVER attempt to fix code directly**
+4. **ALWAYS report the issue number and routing plan**
+
+This ensures traceability, parallel work coordination, and proper code review.
+
+### Workflow Steps
+
+1. **Receive Feature/Bug Request**
    - Parse requirements and acceptance criteria
    - Identify affected services and components
+   - **Do NOT skip to direct implementation**
 
 2. **Create GitHub Issue**
-   - Use `gh issue create` to create structured issue
-   - Include service dependencies in description
+   - Use `gh issue create` to create structured issue with:
+     - **Title**: Clear, concise description
+     - **Description**: Root cause (if bug), requirements, acceptance criteria
+     - **Labels**: `bug` or `feature`, service domains (backend, frontend, database)
+     - **Body**: Include affected services and acceptance criteria
+   - Return issue number in response
 
 3. **Route to Specialists**
-   - For single-service features: Route to one specialist
-   - For multi-service features: Route in parallel if independent, sequential if dependent
-   - Provide specific requirements and service boundaries
+   - For single-service features/bugs: Route to one specialist
+   - For multi-service features/bugs: Route in parallel if independent, sequential if dependent
+   - Provide specific requirements, acceptance criteria, and service boundaries
+   - Include the GitHub issue number in all specialist assignments
 
 4. **Monitor Implementation**
-   - Check PR status with `gh pr view`
-   - Verify branch naming and commit format
-   - Ensure QA approves before merge
+   - Track specialist agent responses
+   - Verify PRs are created to feature branches
+   - Verify branch naming: `feat/{issue-number}-{title}`
+   - Check PR descriptions include issue number
+   - Monitor PR status
 
-5. **Report Completion**
-   - Confirm feature branch creation and merge
-   - Verify GitHub issue auto-closes on merge
+5. **Route to QA Specialist for Review**
+   - Once all specialists complete implementation and create PRs
+   - Route QA specialist to review all PRs
+   - QA specialist will:
+     - Review code quality, architecture, and test coverage
+     - Run tests and verify >80% coverage for new code
+     - Leave detailed feedback **as a comment on the GitHub issue**
+     - Include approval status: ✅ APPROVED or ❌ REJECTED
+     - List any required changes or improvements
+
+6. **Fetch QA Feedback**
+   - **CRITICAL**: After QA specialist completes review
+   - Read the GitHub issue comments to retrieve QA feedback
+   - Use `gh issue view #<issue-number>` to get comments
+   - Parse feedback and approval status from QA comment
+
+7. **Make Merge Decision**
+   - If QA status: ✅ APPROVED
+     - Merge all PRs to main branch
+     - Verify issue auto-closes on final merge
+     - Report successful completion
+   - If QA status: ❌ REJECTED
+     - Report required changes to specialists
+     - Route specialists back for fixes
+     - Loop back to step 4 (Monitor Implementation)
+     - Repeat until QA approves
+
+8. **Report Final Status**
+   - Confirm all PRs merged successfully
+   - Verify GitHub issue auto-closed
+   - Summarize completed work with:
+     - Issue number
+     - QA approval details
+     - Final merge commit references
+
+## Handling Different Request Types
+
+### Bug Fixes
+- **Still create GitHub issue** with label: `bug`
+- **Title example**: "Fix compare script selector after config API changes"
+- **Description**: Include root cause, affected components, and acceptance criteria
+- **Route to specialists** same as features
+
+### Feature Requests
+- **Create GitHub issue** with label: `feature`
+- **Title example**: "Add dark mode support"
+- **Description**: Include requirements and acceptance criteria
+- **Route to specialists** for implementation
+
+### Hotfixes (Urgent Production Issues)
+- **Still create GitHub issue** with label: `bug` and `urgent`
+- **Same workflow** but with expedited review
+- Coordinator still routes to specialists, doesn't fix directly
 
 ## Parallel vs Sequential Routing
 

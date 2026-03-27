@@ -187,7 +187,67 @@ Evaluate each PR on these dimensions:
 Will merge with: `gh pr merge --auto --squash`
 ```
 
-### 7. Auto-Merge Protocol
+### 7. **CRITICAL: GitHub Issue Feedback Comment**
+
+**After completing the code review**, you MUST post a comprehensive feedback comment on the GitHub issue. This is required for the coordinator to fetch feedback and make merge decisions.
+
+**Comment Format**:
+```markdown
+## QA Review Complete - Issue #{issue-number}
+
+**Reviewed PRs**: 
+- PR #{pr-1}: {title}
+- PR #{pr-2}: {title}
+(list all PRs reviewed)
+
+**Overall Assessment**
+| Dimension | Status | Notes |
+|-----------|--------|-------|
+| Architecture | ✅ PASS | Clean separation of concerns |
+| Testing | ✅ PASS | 85% coverage, all edge cases |
+| Error Handling | ✅ PASS | Proper domain errors |
+| Security | ✅ PASS | No vulnerabilities |
+| Git Hygiene | ✅ PASS | Proper Closes # format |
+
+**Review Summary**
+- All acceptance criteria met
+- Code quality excellent
+- Tests comprehensive and passing
+- No blockers identified
+
+---
+
+**APPROVAL STATUS: ✅ APPROVED FOR MERGE**
+
+Ready to merge to main branch.
+```
+
+**If Requesting Changes**:
+```markdown
+## QA Review - Issue #{issue-number}
+
+**Reviewed PRs**: 
+- PR #{pr-1}: {title}
+
+**Overall Assessment**
+| Dimension | Status | Notes |
+|-----------|--------|-------|
+| Testing | ⚠️ NEEDS WORK | Coverage at 72%, below 80% requirement |
+| Error Handling | ❌ BLOCKER | Generic error returns instead of domain errors |
+
+**Required Changes**
+1. Add unit tests to reach >80% coverage
+2. Implement domain-specific errors for validation failures
+3. Update error handling in handlers
+
+---
+
+**APPROVAL STATUS: ❌ REJECTED - CHANGES REQUIRED**
+
+Please address the above items and request another review.
+```
+
+### 8. Auto-Merge Protocol
 
 **When to Auto-Merge**:
 - ✅ All review criteria met
@@ -310,5 +370,7 @@ go test -cover -v ./... > coverage.txt
 ✅ Performance acceptable (no N+1 queries, etc)
 ✅ Proper commit message format
 ✅ Clean git history
-✅ PR auto-merged to feature branch
+✅ PR reviewed and approved/rejected
+✅ **Feedback comment posted on GitHub issue** (CRITICAL)
+✅ Approval status clearly stated in issue comment
 ✅ Issue remains open (auto-closes on main merge)
