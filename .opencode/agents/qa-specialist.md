@@ -187,11 +187,31 @@ Evaluate each PR on these dimensions:
 Will merge with: `gh pr merge --auto --squash`
 ```
 
-### 7. **CRITICAL: GitHub Issue Feedback Comment**
+### 7. **CRITICAL: Post Feedback on GitHub Issue (NOT PR)**
 
-**After completing the code review**, you MUST post a comprehensive feedback comment on the GitHub issue. This is required for the coordinator to fetch feedback and make merge decisions.
+**IMPORTANT**: You MUST post your review feedback as a COMMENT on the GitHub ISSUE, NOT as PR comments. The coordinator needs to fetch feedback from the issue to make merge decisions.
 
-**Comment Format**:
+**When to post feedback**:
+- After reviewing all assigned PRs
+- After running tests and verifying coverage
+- After completing your code review checklist
+
+**Where to post**:
+- Use `gh issue comment #<issue-number> --body "..."`
+- Post on the GitHub ISSUE, NOT on individual PRs
+- This allows the coordinator to track QA status in one place
+
+**What to include in issue comment**:
+- List all PRs reviewed
+- Overall assessment table
+- Approval status (✅ APPROVED or ❌ REJECTED)
+- Any required changes or blockers
+
+**Post-Feedback Action**:
+1. Complete your code review
+2. Post comment on GitHub issue with feedback
+3. Wait - the coordinator will see your feedback and make merge decision
+4. If changes needed, specialists will fix and you'll review again
 ```markdown
 ## QA Review Complete - Issue #{issue-number}
 

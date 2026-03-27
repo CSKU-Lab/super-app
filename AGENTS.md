@@ -127,10 +127,40 @@ go test ./...
 
 ### Git Workflow
 
-- Commit message format: `<type>: <description>`
+**Branching Strategy:**
+- **main**: Production-only, PR review required, NO force push allowed
+- **develop**: Integration branch, merge via PR only
+- **feature/fix branches**: Always create from `develop`, create PR to `develop`
+
+**Commit Message Format:**
+```
+<type>(<scope>): <description>
+
+Optional detailed explanation
+```
 - Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
-- Example: `feat: add user authentication to config-server`
-- Submodules tracked separately (each service is independent repo)
+- Scopes: service names or `ci`, `deps`, `docs`
+- Examples: 
+  - `feat(main-server): add user authentication endpoint`
+  - `fix(task-server): resolve gRPC timeout issue`
+
+**Key Rules:**
+- ❌ NEVER force push to `main` or `develop`
+- ❌ NEVER commit directly to `main` or `develop`
+- ❌ NEVER merge feature branches directly to `main`
+- ✅ Always create PRs from feature/fix branches to `develop`
+- ✅ Use "Squash and merge" for feature branches
+- ✅ Rebase feature branches on latest develop before pushing
+
+**Submodule Management:**
+- When specialist PRs merge in submodule services, coordinator MUST update the super-app submodule reference
+- Pull latest changes in submodule: `cd <service> && git checkout develop && git pull`
+- Commit reference update: `git add <service> && git commit -m "chore(<service>): update submodule reference"`
+- Include submodule commits in feature branch PR to track all dependencies
+
+**Load skill for detailed guidance**: `skill({ name: "git-workflow" })`
+
+Submodules tracked separately (each service is independent repo)
 
 ### Service Interaction Patterns
 
@@ -245,6 +275,11 @@ IOI Isolate configuration and safe code execution patterns. Covers resource limi
 Multi-agent orchestration patterns. Use this skill to understand how to dispatch tasks to specialized agents for different service types.
 
 **Load with**: `skill({ name: "orchestrator" })`
+
+### Skill: git-workflow
+Git branching strategy, commit conventions, and pull request workflow for CSKU Lab. Covers branch protection rules, PR creation, merge strategies, and safety practices.
+
+**Load with**: `skill({ name: "git-workflow" })`
 
 ## Orchestrator Pattern for Agents
 
