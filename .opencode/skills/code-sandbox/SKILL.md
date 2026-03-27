@@ -1,522 +1,383 @@
 ---
 name: code-sandbox
-description: IOI Isolate configuration and safe code execution patterns
+description: IOI Isolate wrapper implementation and safe code execution patterns
 license: MIT
 compatibility: opencode
 metadata:
   audience: experienced-developers
   component: go-grader
-  isolation: isolate
+  files: isolate.go, executor.go
 ---
 
-# Code Sandbox & IOI Isolate
+# Code Sandbox & IOI Isolate Wrapper
 
-This skill covers IOI Isolate configuration and safe code execution patterns. Use this when working on go-grader workers, configuring sandboxes, or managing code execution security.
+This skill covers the CSKU Lab wrapper implementation around IOI Isolate for sandboxed code execution. Use this when working on go-grader's isolate wrapper, executor patterns, or managing code execution security.
 
 ## Overview
 
-CSKU Lab uses IOI Isolate for sandboxed code execution. The system prevents malicious code from:
-- Accessing the host filesystem
-- Consuming excessive resources
-- Interfering with other tasks
-- Modifying system state
+The CSKU Lab isolate wrapper (in `go-grader/domain/services/isolate.go`) provides a safe, managed interface for executing code in isolated sandboxes using IOI Isolate. It manages:
+- Isolate box lifecycle (init, cleanup, reuse)
+- Resource limits (time, memory, processes)
+- File operations within sandboxes
+- Compilation and execution of code
+- Metadata extraction from execution results
 
 ## Architecture
 
 ### Components
 
-**Master (go-grader-master, Port 8083):**
-- Receives gRPC grading requests
-- Queues tasks to RabbitMQ
-- Collects results from workers
+**IsolateService** (`isolate.go:17-42`):
+- Manages two pools of isolate boxes: **run pool** and **grade pool**
+- Run pool: For simple code execution without test cases
+- Grade pool: For grading with multiple test cases (sized 2x the concurrency limit)
+- Box IDs are pre-allocated in channels for reuse without recreation
 
-**Workers (go-grader-worker):**
-- Consume tasks from RabbitMQ
-- Execute code in Isolate sandbox
-- Report execution results
+**IsolateInstance** (`isolate.go:44-51`):
+- Single sandbox instance wrapper
+- Manages box paths, metadata paths, and cleanup
+- Provides methods for file operations, compilation, and execution
+- Handles all isolate CLI invocations via `execute()` wrapper
 
-**Isolate Container:**
-- Docker image with IOI Isolate
-- Privileged mode required
-- Mounted volumes for data
+**ExecutorService** (`executor.go:16-34`):
+- Builder pattern for configurable execution
+- Supports both simple `Run()` and complex `Grade()` with test cases
+- Manages runner and compare service references
 
-### Execution Flow
-
-```
-1. Client submits code via main-server
-2. main-server → RabbitMQ (queue submission)
-3. go-grader-master → RabbitMQ (listen for submissions)
-4. Master distributes to available workers
-5. Worker → Isolate sandbox (execute code)
-6. Isolate → Worker (results: output, exit code, resource usage)
-7. Worker → RabbitMQ (send results)
-8. Master → main-server → Client (results)
-```
-
-## Isolate Configuration
-
-### Directory Structure
+### Box ID Allocation
 
 ```
-go-grader/
-├── docker/worker/Dockerfile      # Worker image with Isolate
-├── isolate-config/
-│   └── default.conf              # Isolate sandbox config
-├── cmd/
-│   ├── master/                   # Master service
-│   ├── worker/                   # Worker service
-│   └── isolate-runner/           # Isolate CLI wrapper
-└── internal/
-    ├── execution/                # Execution management
-    └── sandbox/                  # Sandbox interface
+Run Pool:     0 to (runQueueAmount - 1)
+Grade Pool:   runQueueAmount to (runQueueAmount + gradePoolSize - 1)
+              where gradePoolSize = gradeQueueAmount * 2
 ```
 
-### Resource Limits Configuration
+Example with `runQueueAmount=5, gradeQueueAmount=10`:
+- Run boxes: 0-4 (5 boxes)
+- Grade boxes: 5-24 (20 boxes for parallel test case execution)
+- Total: 25 boxes
 
-**default.conf:**
-```ini
-# Memory limit in KB
-memLimitInKB = 262144             # 256 MB
+## IsolateService Implementation
 
-# CPU time limit in seconds
-cpuTimeLimit = 5                  # 5 seconds
-
-# Wall-clock time limit in seconds
-wallTimeLimit = 10                # 10 seconds
-
-# File size limit in bytes
-fileSizeLimit = 1048576           # 1 MB
-
-# I/O time limit in seconds
-ioTimeLimit = 3                   # 3 seconds
-
-# Number of processes
-maxProcesses = 10
-
-# Number of threads per process
-maxThreads = 100
-```
-
-### Sandbox Directories
-
-**Directory Layout Inside Sandbox:**
-```
-/
-├── tmp/                          # Temporary files
-├── var/
-│   └── log/                      # Logs (if enabled)
-├── home/
-│   └── user/
-│       ├── input.txt             # Standard input
-│       ├── output.txt            # Standard output
-│       ├── error.txt             # Standard error
-│       └── solution.cpp          # User code
-└── etc/
-    ├── passwd                    # Minimal passwd
-    └── group                     # Minimal group
-```
-
-**Mount Points:**
-- Read-only: System libraries, compilers
-- Read-write: Home directory, temp
-- No access: Host filesystem
-
-## Safe Code Execution Patterns
-
-### Execution Steps
-
-1. **Prepare Sandbox**
-   - Create isolated filesystem
-   - Copy user code
-   - Set resource limits
-
-2. **Compile Code** (if needed)
-   ```bash
-   isolate --box-id=1 --processes --cg-timing \
-     -- g++ -o solution solution.cpp
-   ```
-
-3. **Run with Input**
-   ```bash
-   isolate --box-id=1 --stdin=input.txt --stdout=output.txt \
-     --time=5 --mem=256 \
-     -- ./solution
-   ```
-
-4. **Collect Results**
-   - Exit code
-   - Runtime statistics
-   - Output files
-   - Error messages
-
-5. **Cleanup**
-   - Destroy sandbox
-   - Remove isolated filesystem
-
-### Go Implementation Pattern
+### Creating Instances
 
 ```go
-type SandboxExecutor struct {
-    isolateBoxID int
-    config       *IsolateConfig
+// From IsolateService (in isolate.go:53-81)
+service := NewIsolateService(logger, runQueueAmount, gradeQueueAmount)
+
+// Allocate from run pool
+runInstance := service.NewRunInstance()    // Gets box ID from runBoxIds channel
+
+// Allocate from grade pool
+gradeInstance := service.NewGradeInstance() // Gets box ID from gradeBoxIds channel
+```
+
+**Important:** Box IDs are blocking channel operations. If all boxes are in use, allocation will block until one is returned to the pool.
+
+### Instance Lifecycle
+
+```go
+// 1. Initialize the sandbox
+instance.Init(ctx)
+
+// 2. Create files in sandbox
+instance.CreateFile("solution.cpp", code, 0644)
+instance.CreateDir("src", 0755)
+
+// 3. Compile if needed
+if needsCompile {
+    output, err := instance.Compile(ctx)        // Uses default build_script.sh
+    // OR
+    output, err := instance.CompileUsing(ctx, scriptDir)  // Custom script path
 }
 
-func (e *SandboxExecutor) Execute(ctx context.Context, req *ExecuteRequest) (*ExecuteResult, error) {
-    // 1. Prepare sandbox
-    if err := e.prepareSandbox(); err != nil {
-        return nil, err
-    }
-    defer e.cleanup()
-    
-    // 2. Copy user code
-    if err := e.copyFiles(req.Code, req.Input); err != nil {
-        return nil, err
-    }
-    
-    // 3. Compile if needed
-    if req.Language == "cpp" {
-        if _, err := e.compile(); err != nil {
-            return &ExecuteResult{
-                Status: StatusCompilationError,
-                Error:  err.Error(),
-            }, nil
-        }
-    }
-    
-    // 4. Execute with timeout
-    ctx, cancel := context.WithTimeout(ctx, e.config.WallTimeLimit)
-    defer cancel()
-    
-    result, err := e.run(ctx, req)
-    if err != nil {
-        return nil, err
-    }
-    
-    // 5. Check exit code and resources
-    return e.processResult(result), nil
+// 4. Run the code
+output, err := instance.Run(ctx, scriptDir, input, limits)
+// OR with custom path
+output, err := instance.RunFromDir(ctx, scriptDir, input, limits)
+
+// 5. Get metadata
+metadata, err := instance.GetMetadata()  // Read from metadata file
+
+// 6. Cleanup (MUST ALWAYS DO THIS)
+instance.Cleanup()  // Returns box ID to pool, must use background context
+```
+
+**Critical:** Always call `Cleanup()` in a defer, even if errors occur. It returns the box ID to the pool for reuse.
+
+## Resource Limits
+
+Limits are defined as a struct and passed to `Run()` or `RunFromDir()`:
+
+```go
+type Limit struct {
+    TimeLimit    int   `arg:"--time"`       // CPU time in seconds
+    WallTimeLimit int   `arg:"--wall-time"` // Wall-clock time in seconds
+    Memory       int   `arg:"--mem"`        // Memory in KB
+    Stack        int   `arg:"--stack"`      // Stack size in KB
+    FileSizeLimit int   `arg:"--fsize"`     // File size limit in bytes
+    DiskQuota    int   `arg:"--quota"`      // Disk quota in MB
 }
 ```
 
-## Supported Languages
+Limit flags are dynamically generated via reflection (see `getLimitArgs()` in isolate.go:302-335). Zero values are skipped.
 
-### Language Specifications
-
-**C++ (gcc/g++)**
+Example:
 ```go
-{
-    Language: "cpp",
-    Compiler: "g++",
-    Extension: ".cpp",
-    CompileCmd: "g++ -O2 -o solution solution.cpp",
-    RunCmd: "./solution",
+limits := &models.Limit{
+    TimeLimit: 5,        // 5 seconds CPU time
+    Memory: 262144,      // 256 MB
+    FileSizeLimit: 1048576,  // 1 MB
 }
+
+output, err := instance.RunFromDir(ctx, scriptDir, input, limits)
 ```
 
-**Python 3**
+## Execution Flow
+
+### Simple Run (without grading)
+
 ```go
-{
-    Language: "python",
-    Compiler: "",  // No compilation
-    Extension: ".py",
-    RunCmd: "python3 solution.py",
-}
+// From run_test.go (TestRunPassed)
+executor, status := executorService.NewExecutor().
+    RunnerID("python_test").
+    Files([]models.File{
+        {Name: "main.py", Content: `print("Hello World")`},
+    }).
+    Build()
+
+result, err := executor.Run(context.Background())
+// Returns RunResult with Status, Output, WallTime, Memory
 ```
 
-**Java**
+**Execution steps:**
+1. Get run instance from pool
+2. Init sandbox
+3. Create user files
+4. Compile if needed (check runner.NeedCompile)
+5. Run with RunFromDir()
+6. Extract metadata
+7. Cleanup and return box to pool
+
+### Grade with Test Cases (parallel execution)
+
 ```go
-{
-    Language: "java",
-    Compiler: "javac",
-    Extension: ".java",
-    CompileCmd: "javac Solution.java",
-    RunCmd: "java Solution",
-}
+// From executor.go Grade() method
+result, err := executor.Grade(ctx)
+// Returns GradeResult with TestCaseGroupResults, Score, AvgWallTime, AvgMemory
 ```
 
-**JavaScript (Node.js)**
+**Execution flow:**
+1. For each TestCaseGroup (parallel via errgroup):
+   - For each TestCase (parallel via errgroup):
+     - Get grade instance
+     - Init, create files, compile, run with test input
+     - Get metadata
+     - Compare output against expected output
+     - Cleanup and return box
+2. Aggregate results and calculate total score
+3. Return GradeResult
+
+**Parallelism:** Test cases within a group run concurrently. Grade pool (2x larger) handles this concurrency.
+
+## Metadata Extraction
+
+After execution, extract results via metadata file:
+
 ```go
-{
-    Language: "javascript",
-    Compiler: "",
-    Extension: ".js",
-    RunCmd: "node solution.js",
-}
+metadata, err := instance.GetMetadata()
+
+// Available fields:
+// - WallTime (float32): Real elapsed time in seconds
+// - Memory (int32): Peak memory usage in KB
+// - FailedStatus (string): Execution error, if any
+//   "TO" = timeout
+//   "RE" = runtime error
+//   "SG" = signal error
+//   "XX" = other error
 ```
 
-## Result Processing
-
-### Execution Status
-
+Interpretation in executor.go:390-423:
 ```go
-type ExecutionStatus string
-
-const (
-    StatusOK ExecutionStatus = "OK"
-    StatusCompilationError ExecutionStatus = "COMPILATION_ERROR"
-    StatusRuntimeError ExecutionStatus = "RUNTIME_ERROR"
-    StatusTimeLimitExceeded ExecutionStatus = "TIME_LIMIT_EXCEEDED"
-    StatusMemoryLimitExceeded ExecutionStatus = "MEMORY_LIMIT_EXCEEDED"
-    StatusWrongAnswer ExecutionStatus = "WRONG_ANSWER"
-)
-```
-
-### Result Structure
-
-```go
-type ExecuteResult struct {
-    Status        ExecutionStatus
-    ExitCode      int
-    Output        string
-    Error         string
-    Time          float64    // seconds
-    Memory        int64      // KB
-    Verdict       string     // PASS/FAIL/ERROR
-}
-```
-
-### Result Determination
-
-```go
-func (e *SandboxExecutor) determineVerdict(result *ExecuteResult) ExecutionStatus {
-    // Check resource limits first
-    if result.Time > e.config.CPUTimeLimit {
-        return StatusTimeLimitExceeded
+status := execution.RUN_PASSED
+if metadata.FailedStatus != "" {
+    switch metadata.FailedStatus {
+    case "TO": status = execution.TIME_LIMIT_EXCEEDED
+    case "RE": status = execution.RUNTIME_ERROR
+    case "SG": status = execution.SIGNAL_ERROR
+    case "XX": status = execution.GRADER_ERROR
     }
-    if result.Memory > e.config.MemoryLimitKB {
-        return StatusMemoryLimitExceeded
-    }
-    
-    // Then check exit code
-    if result.ExitCode != 0 {
-        return StatusRuntimeError
-    }
-    
-    // Finally compare output
-    if result.Output != expectedOutput {
-        return StatusWrongAnswer
-    }
-    
-    return StatusOK
+}
+
+// Check memory limit separately
+if limits.Memory != 0 && metadata.Memory > limits.Memory {
+    status = execution.MEMORY_LIMIT_EXCEEDED
 }
 ```
 
-## Testing the Sandbox
+## ExecutorBuilder Pattern
 
-### Manual Testing
+The executor uses a builder pattern for flexible configuration:
+
+```go
+executor, err := executorService.NewExecutor().
+    RunnerID("python_test").                    // Runner type (defines compile/run scripts)
+    Files([]models.File{...}).                  // Source files to copy
+    Input("test input").                         // Stdin for program
+    Limits(&models.Limit{...}).                 // Resource constraints
+    TestCaseGroups([]models.TestCaseGroup{...}). // For grading
+    CompareID("exact_match").                   // For comparing outputs
+    Build()
+
+if err != nil {
+    // Handle build error (runner not found, compare not found, etc.)
+}
+
+// Then either:
+result, err := executor.Run(ctx)      // Simple execution
+// OR
+result, err := executor.Grade(ctx)    // Grading with test cases
+```
+
+## Isolate-Docker Integration
+
+The isolate-docker repository provides the Docker image:
 
 ```bash
-# Create a test directory
-mkdir -p /tmp/test_isolate
-cd /tmp/test_isolate
+# Build the isolate image
+docker build -t ioi/isolate .
 
-# Create test code
-cat > solution.cpp << 'EOF'
-#include <iostream>
-int main() {
-    std::cout << "Hello World" << std::endl;
-    return 0;
-}
-EOF
-
-# Create input
-echo "test input" > input.txt
-
-# Run with isolate
-isolate --box-id=1 \
-  --stdin=input.txt \
-  --stdout=output.txt \
-  --time=5 \
-  --mem=256 \
-  --processes \
-  -- bash -c "g++ -o solution solution.cpp && ./solution"
-
-# Check results
-cat output.txt
+# Run with config mount
+docker run -v ./config:/usr/local/etc/isolate -it ioi/isolate
 ```
 
-### Integration Testing
+The `with-compilers/` variant includes language toolchains (gcc, python, etc.) for the image. Worker containers run with:
+- `privileged: true` (required for Isolate)
+- Isolate binary available in PATH
+- Config mounted from `isolate-config/`
+
+## Testing Integration
+
+Integration tests show real usage patterns:
 
 ```go
-func TestSandboxExecution(t *testing.T) {
-    executor := NewSandboxExecutor(1, defaultConfig)
-    
-    result, err := executor.Execute(context.Background(), &ExecuteRequest{
-        Language: "cpp",
-        Code:     `
-            #include <iostream>
-            int main() {
-                std::cout << "Hello" << std::endl;
-                return 0;
-            }
-        `,
-        Input:    "",
-        Timeout:  5,
-    })
-    
-    assert.NoError(t, err)
-    assert.Equal(t, StatusOK, result.Status)
-    assert.Contains(t, result.Output, "Hello")
-}
+// Test 1: Simple execution (run_test.go:11-35)
+TestRunPassed() - Hello World via Python
+
+// Test 2: With input (run_test.go:37-67)
+TestRunWithInput() - Echo program with stdin
+
+// Test 3: Compilation errors (run_test.go:69-98)
+TestRunCompileFailed() - Invalid C++ syntax
+
+// Test 4: Runtime errors (run_test.go:100-129)
+TestRunFailed() - Python syntax error
 ```
 
-## Security Best Practices
+Run tests via:
+```bash
+cd go-grader
+go test ./tests/integration -v
+```
 
-### Input Validation
+## Common Patterns
+
+### Pattern 1: Simple Code Execution
 
 ```go
-// Limit code size
-const maxCodeSize = 1024 * 100  // 100 KB
+executor, _ := executorService.NewExecutor().
+    RunnerID("python_test").
+    Files(files).
+    Input(input).
+    Build()
 
-func (e *SandboxExecutor) validateInput(code string) error {
-    if len(code) > maxCodeSize {
-        return fmt.Errorf("code too large: %d > %d", len(code), maxCodeSize)
-    }
-    
-    // Check for forbidden patterns
-    forbiddenPatterns := []string{
-        "system(",
-        "exec(",
-        "fork(",
-        "dlopen(",
-    }
-    
-    for _, pattern := range forbiddenPatterns {
-        if strings.Contains(code, pattern) {
-            return fmt.Errorf("forbidden function: %s", pattern)
+result, _ := executor.Run(ctx)
+// Handle result.Status, result.Output
+```
+
+### Pattern 2: Grading with Limits
+
+```go
+executor, _ := executorService.NewExecutor().
+    RunnerID("cpp_test").
+    Files(userFiles).
+    Limits(&models.Limit{TimeLimit: 5, Memory: 262144}).
+    TestCaseGroups(testGroups).
+    CompareID("exact_match").
+    Build()
+
+result, _ := executor.Grade(ctx)
+// Handle result.Score, result.TestCaseGroupResults
+```
+
+### Pattern 3: Custom Compile Script
+
+```go
+instance := service.NewRunInstance()
+instance.Init(ctx)
+defer instance.Cleanup()
+
+instance.CreateFile("solution.cpp", code, 0644)
+
+// Use custom compilation script
+output, err := instance.CompileUsing(ctx, "/path/to/custom/scripts")
+output, err := instance.RunFromDir(ctx, "/path/to/custom/scripts", input, limits)
+```
+
+## Error Handling
+
+Exit code 127 indicates the command passed to isolate doesn't exist:
+
+```go
+output, err := instance.Run(ctx, ...)
+if err != nil {
+    var exitErr *exec.ExitError
+    if errors.As(err, &exitErr) {
+        if exitErr.ExitCode() == 127 {
+            // Command (e.g., run_script.sh) not found in sandbox
         }
     }
-    
-    return nil
-}
-```
-
-### Resource Enforcement
-
-```go
-// Always enforce limits
-type SandboxConfig struct {
-    TimeLimit       time.Duration  // Max 30s
-    MemoryLimit     int64          // Max 512MB
-    FileSizeLimit   int64          // Max 100MB
-    MaxProcesses    int            // Max 10
-    MaxThreads      int            // Max 100
-}
-
-func NewSandboxConfig() *SandboxConfig {
-    return &SandboxConfig{
-        TimeLimit:     30 * time.Second,
-        MemoryLimit:   512 * 1024 * 1024,
-        FileSizeLimit: 100 * 1024 * 1024,
-        MaxProcesses:  10,
-        MaxThreads:    100,
-    }
-}
-```
-
-### Monitoring Execution
-
-```go
-// Track execution metrics
-type ExecutionMetrics struct {
-    TaskID        string
-    Language      string
-    Status        ExecutionStatus
-    TimeUsed      float64
-    MemoryUsed    int64
-    OutputSize    int64
-    ExecutedAt    time.Time
-    Duration      time.Duration
-}
-
-func (m *ExecutionMetrics) Log(logger *slog.Logger) {
-    logger.Info("execution_completed",
-        slog.String("task_id", m.TaskID),
-        slog.String("status", string(m.Status)),
-        slog.Float64("time_sec", m.TimeUsed),
-        slog.Int64("memory_kb", m.MemoryUsed),
-    )
 }
 ```
 
 ## Troubleshooting
 
-### Isolation Failures
+### Box Pool Exhaustion
 
-```bash
-# Check if isolate is installed
-which isolate
+If all boxes are in use, `NewRunInstance()` or `NewGradeInstance()` will block. Monitor:
+- Pool size configuration (runQueueAmount, gradeQueueAmount)
+- Cleanup calls (ensure defer statements execute)
+- Hanging instances (check logs for incomplete cleanups)
 
-# Verify permissions
-id  # Should see isolate group
+### Compilation Failures
 
-# Test basic isolation
-isolate --box-id=1 -- echo "Test"
-```
-
-### Resource Limit Issues
-
-```bash
-# Increase system limits if needed
-ulimit -a
-
-# Common issues:
-# - Memory limit too high → OOM
-# - Time limit too tight → timeout on slow systems
-# - Process limit too low → cannot spawn subprocesses
-```
-
-### Sandbox Not Cleaning Up
-
-```bash
-# List active boxes
-isolate -s
-
-# Destroy specific box
-isolate --cleanup --box-id=1
-
-# Destroy all
-for i in {1..255}; do
-  isolate --cleanup --box-id=$i 2>/dev/null
-done
-```
-
-## Performance Optimization
-
-### Parallel Execution
-
-Workers can run multiple sandboxes in parallel (different box IDs):
-
+Check compilation output:
 ```go
-const (
-    MaxConcurrentTasks = 10
-    BoxIDStart = 1
-    BoxIDEnd = 255
-)
-
-type WorkerPool struct {
-    activeBoxes chan int  // Available box IDs
-}
-
-func NewWorkerPool() *WorkerPool {
-    pool := make(chan int, MaxConcurrentTasks)
-    for i := BoxIDStart; i < BoxIDStart+MaxConcurrentTasks; i++ {
-        pool <- i
-    }
-    return &WorkerPool{activeBoxes: pool}
+output, err := instance.Compile(ctx)
+if err != nil {
+    // output contains compiler error messages
 }
 ```
 
-### Caching Compiled Code
+Build script must exist at expected path in sandbox.
 
-For repeated language/code combinations:
+### Memory/Time Limit Exceeded
 
+Verify limits are set and metadata is extracted correctly:
 ```go
-type CompileCache struct {
-    cache map[string]string  // hash -> compiled binary path
-    mu    sync.RWMutex
+metadata, _ := instance.GetMetadata()
+if metadata.FailedStatus == "TO" { // Timeout
+    // Time limit exceeded
 }
+```
+
+### File Creation Errors
+
+Box path must exist after Init():
+```go
+err := instance.CreateFile(name, content, 0644)
+// Verifies: instance.boxPath/<name> can be written
 ```
 
 ---
 
-**When to use this skill:** Use this when working on go-grader workers, configuring sandboxes, optimizing code execution, or ensuring security of the grading system.
+**When to use this skill:** Use when working on go-grader's executor, isolate wrapper, improving parallelism, or debugging code execution issues.
