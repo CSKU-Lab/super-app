@@ -110,12 +110,12 @@ cd config-server && go test -v ./...
 cd task-server && go test -v ./...
 cd go-grader && go test -v ./...
 
-# Frontend Testing
-cd web && npm test -- --coverage
+# Frontend Testing (pnpm ONLY - never npm!)
+cd web && pnpm test -- --coverage
 
 # Build Verification
 cd main-server && go build ./...
-cd web && npm run build
+cd web && pnpm build
 ```
 
 ### 4. Integration Test Validation
