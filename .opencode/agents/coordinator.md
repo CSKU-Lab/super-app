@@ -507,7 +507,11 @@ The CSKU Lab repository uses Git submodules for independent service repositories
 2. **Submodule PR merges**
    - Specialist's PR merges to `develop` in the submodule
 
-3. **Update Super-App Submodule Reference**
+3. **🔄 IMMEDIATE: Update Super-App Submodule Reference (AUTO-COMMIT)**
+   
+   **CRITICAL**: Coordinator MUST update submodule reference immediately after specialist PR merges.
+   This ensures users can see the result directly without any manual refresh needed.
+   
    ```bash
    # From super-app root directory
    cd <submodule-name>  # e.g., cd config-server
@@ -519,15 +523,27 @@ The CSKU Lab repository uses Git submodules for independent service repositories
    git status
    # Should show: modified:   <submodule-name> (new commits)
    
-   # Commit the submodule reference update
+   # ⚡ AUTO-COMMIT: Immediately commit the submodule reference update
    git add <submodule-name>
-   git commit -m "chore(config-server): update submodule reference to latest develop"
+   git commit -m "chore(<submodule>): update submodule reference to latest develop
+   
+   Closes #{issue-number}"
+   
+   # Push to feature branch (if still in progress)
+   git push origin feature/{issue-number}-{title}
    ```
+   
+   **Why Immediate Update?**
+   - Users can see the merged submodule changes reflected in super-app instantly
+   - No manual refresh or additional commands needed
+   - Submodule pointer always stays synchronized with specialist work
+   - Provides real-time feedback that code changes are integrated
 
 4. **Include in Feature Branch PR**
    - The submodule reference commit is included in the feature branch
    - When the feature PR merges, the super-app locks to the latest submodule commits
    - This ensures the PR tracks all dependencies and changes
+   - **Result**: Users see both service code changes AND updated submodule references in one go
 
 #### Example Scenario
 
@@ -538,35 +554,86 @@ The CSKU Lab repository uses Git submodules for independent service repositories
    - Checks out `develop` in config-server submodule
    - Creates PR for caching feature
    - Merges PR to config-server's `develop`
-3. **Coordinator post-merge**:
+3. **⚡ Coordinator IMMEDIATELY updates submodule reference** (no waiting):
    ```bash
+   # User sees caching changes immediately reflected in super-app!
    cd config-server
    git checkout develop
    git pull origin develop
    cd ..
    git add config-server
    git commit -m "chore(config-server): update submodule reference after caching implementation
-
-   Closes #issue-number"
-   git push origin feature/issue-number-add-caching
+   
+   Closes #123"
+   git push origin feature/123-add-caching
    ```
-4. **Super-app PR now includes**:
-   - Any changes made to config-server pointer
+4. **Super-app feature branch now includes**:
+   - Immediate submodule reference update
    - Links the super-app to the specific commit in config-server where caching was added
+   - Users can see the integration without manual refresh
+
+**Timeline**:
+- ✅ T=0m: Specialist PR merges to config-server/develop
+- ✅ T=1m: Coordinator updates submodule reference in super-app
+- ✅ T=1m: Users see integrated changes in super-app repo immediately
+- ✅ T=5m+: Feature branch PR continues with other tasks or merges
 
 ### Important Rules for Submodules
 
 ✅ **DO**:
-- Update submodule references when specialist's changes merge
+- Update submodule references **IMMEDIATELY** when specialist's changes merge (don't wait)
 - Include submodule commits in the feature branch
 - Verify `git status` shows the submodule change as `(new commits)`
 - Push the submodule reference update to the feature branch
+- Commit with proper format: `chore(<service>): update submodule reference`
+- Users should see integrated changes without manual refresh
 
 ❌ **DON'T**:
 - Forget to update submodule references after specialist PRs merge
+- Wait to update submodules until the end of feature work
 - Commit submodule reference without verifying it points to the correct commit
 - Leave submodule pointers on old commits
 - Update submodule pointers on develop/main without coordinating with specialists
+- Make users manually refresh or wait to see integrated changes
+
+### Automatic Submodule Update Workflow
+
+**When to Execute** (After Each Specialist Service PR Merges):
+```
+Specialist PR Merge → [IMMEDIATELY] → Coordinator Updates Submodule → User Sees Result
+```
+
+**Coordinator Action** (Immediate, ~1 minute after merge):
+```bash
+# Step 1: Navigate to affected submodule
+cd <submodule-name>
+
+# Step 2: Sync with latest develop branch
+git checkout develop
+git pull origin develop
+
+# Step 3: Return to super-app root
+cd ..
+
+# Step 4: Verify submodule moved to new commit
+git status
+# Expected: modified:   <submodule-name> (new commits)
+
+# Step 5: Auto-commit the submodule reference update
+git add <submodule-name>
+git commit -m "chore(<submodule>): update submodule reference to latest develop
+
+Closes #{issue-number}"
+
+# Step 6: Push to feature branch
+git push origin feature/{issue-number}-{title}
+```
+
+**Result**: 
+- ✅ Users see merged service code reflected in super-app immediately
+- ✅ No manual refresh or additional commands needed
+- ✅ Submodule pointer always synchronized with specialist work
+- ✅ Real-time feedback that integration is complete
 
 ### Verifying Submodule Updates
 
