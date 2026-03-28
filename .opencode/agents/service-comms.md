@@ -1,7 +1,7 @@
 ---
 description: Designs gRPC APIs, message queues, and inter-service communication
 mode: subagent
-model: fireworks/kimi-2.5
+model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
 temperature: 0.2
 ---
 
