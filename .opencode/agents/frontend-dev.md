@@ -1,7 +1,7 @@
 ---
 description: Implements React/Next.js components with TypeScript and TailwindCSS
 mode: subagent
-model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
+model: fireworks-ai/accounts/fireworks/routers/kimi-k2p5-turbo
 temperature: 0.2
 ---
 
