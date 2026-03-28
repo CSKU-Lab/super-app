@@ -3,6 +3,24 @@ set -a
 
 source <(doppler secrets download --no-file --format env)
 
+# -----------------------------------------------------------------------------
+# Step 0: Initialize Git Worktrees (if needed)
+# -----------------------------------------------------------------------------
+echo "-----------------------------------------------------------------------------"
+echo "Step 0: Initializing Git Worktrees"
+echo "-----------------------------------------------------------------------------"
+
+if [[ ! -d ".worktrees" ]] || [[ $(ls -A .worktrees 2>/dev/null | wc -l) -eq 0 ]]; then
+    echo "🔄 Setting up git worktrees for first time..."
+    ./scripts/migrate-to-worktree.sh --force
+    echo "✅ Git worktrees initialized!"
+else
+    echo "✅ Git worktrees already initialized"
+    # Optional: clean up old worktrees older than 72 hours
+    # ./scripts/worktree.sh cleanup-all --older-than 72h > /dev/null 2>&1 || true
+fi
+echo ""
+
 # Define some colors and symbols
 if command -v tput >/dev/null 2>&1 && tput setaf 1 >/dev/null 2>&1; then
     GREEN=$(tput setaf 2)

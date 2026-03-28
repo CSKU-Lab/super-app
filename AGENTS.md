@@ -152,15 +152,19 @@ Optional detailed explanation
 - ✅ Use "Squash and merge" for feature branches
 - ✅ Rebase feature branches on latest develop before pushing
 
-**Submodule Management:**
-- When specialist PRs merge in submodule services, coordinator MUST update the super-app submodule reference
-- Pull latest changes in submodule: `cd <service> && git checkout develop && git pull`
-- Commit reference update: `git add <service> && git commit -m "chore(<service>): update submodule reference"`
-- Include submodule commits in feature branch PR to track all dependencies
+**Git Worktree Workflow (REQUIRED):**
+- **All AI agents MUST use git worktrees** for development work
+- Worktrees are created fresh per issue, destroyed after PR merge & QA approval
+- **Single-use**: Each worktree is isolated and ephemeral
+- **Always isolated**: No shared worktrees between agents
+- **Multiple worktrees supported**: Can test multiple branches of same service
+- Coordinator creates worktrees via: `./scripts/worktree.sh create <service> feat/{issue}-{service}`
+- Agent receives worktree path and works entirely within it
+- No submodule reference updates needed (automatic cleanup)
 
-**Load skill for detailed guidance**: `skill({ name: "git-workflow" })`
+**Load skill for detailed guidance**: `skill({ name: "git-worktree" })`
 
-Submodules tracked separately (each service is independent repo)
+Each service is an independent repository with dedicated worktree per issue
 
 ### Service Interaction Patterns
 

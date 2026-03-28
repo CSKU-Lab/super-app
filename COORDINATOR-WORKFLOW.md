@@ -161,45 +161,86 @@ https://github.com/CSKU-Lab/super-app/issues/3
 
 ---
 
-### Step 3: Route to Specialists
+### Step 3: Create Worktrees & Route to Specialists
 
 **Coordinator Decision:**
 - This bug affects frontend UI and backend API
 - Backend API is correct (no changes needed)
 - Frontend ConfigService needs fixing
-- Work can be done in parallel
+- Work can be done in parallel (with isolated worktrees)
+
+**Create Worktrees:**
+
+For each service involved, create a dedicated worktree:
+
+```bash
+# Create worktrees for specialists
+./scripts/worktree.sh create web feat/3-web/fix-config-service
+./scripts/worktree.sh create main-server feat/3-main-server/verify-api-contract
+
+# Output:
+# ✅ Worktree created: .worktrees/web-feat-3-web-fix-config-service-abc123/
+# ✅ Worktree created: .worktrees/main-server-feat-3-main-server-verify-api-contract-def456/
+```
 
 **Routing:**
 
 ```
 Issue #3 Specialist Assignments:
 
-1. frontend-dev
+1. frontend-dev specialist
+   Worktree: .worktrees/web-feat-3-web-fix-config-service-{id}/
    Task: Fix ConfigService to extract data from paginated responses
-   Branch: feat/3-frontend/fix-config-service
+   Branch: feat/3-web/fix-config-service (auto-created in worktree)
    PR will have: "Closes #3" in commit message
    
-2. go-clean-arch (verification only)
+2. go-clean-arch specialist (verification only)
+   Worktree: .worktrees/main-server-feat-3-main-server-verify-api-contract-{id}/
    Task: Verify backend API contract is correct
-   Branch: feat/3-backend/verify-api-contract
+   Branch: feat/3-main-server/verify-api-contract (auto-created in worktree)
    PR will have: "Closes #3" in commit message
 ```
+
+**Worktree Benefits:**
+- Each specialist has isolated, clean environment
+- No conflicts or interference between parallel work
+- Single-use per issue (ephemeral)
+- Automatic cleanup after merge
+
+Load skill for details: `skill({ name: "git-worktree" })`
 
 ---
 
 ### Step 4: Monitor Implementation
 
-**Coordinator Monitors:**
-- ✅ frontend-dev creates `feat/3-frontend/fix-config-service` branch
-- ✅ go-clean-arch creates `feat/3-backend/verify-api-contract` branch
+**Coordinator Monitors Worktrees:**
+- ✅ web worktree created and specialist working
+- ✅ main-server worktree created and specialist working
+- ✅ Both create branches from worktree:
+  - `feat/3-web/fix-config-service`
+  - `feat/3-main-server/verify-api-contract`
 - ✅ Both create PRs with "Closes #3" in commits
 - ✅ Specialist work completes
 
-**Example PR:**
+**Check Worktree Status:**
+
+```bash
+# List active worktrees
+./scripts/worktree.sh list
+
+# Output:
+# Service                          Branch                         Locked  Path
+# -----                            ------                         ------  ----
+# web-feat-3-web                   feat/3-web/fix-config-service  no      web-feat-3-web-fix-abc123
+# main-server-feat-3-main          feat/3-main-server/verify      no      main-server-feat-3-main-def456
+```
+
+**Example PR from Worktree:**
 ```
 Title: Fix ConfigService pagination extraction
-Branch: feat/3-frontend/fix-config-service
-Commit: fix(config-service): extract data array from paginated responses
+Branch: feat/3-web/fix-config-service
+Worktree: .worktrees/web-feat-3-web-fix-config-service-{id}/
+Commit: fix(web): extract data array from paginated responses
         Closes #3
 ```
 
@@ -311,7 +352,37 @@ gh pr merge #46 --auto --squash
 
 ---
 
-### Step 8: Report Final Status
+### Step 8B: Cleanup Worktrees (After Merge)
+
+**Coordinator Cleanup Steps:**
+
+After both PRs have been successfully merged and QA has given final approval:
+
+```bash
+# Wait 5 minutes for final deployment confirmation
+
+# Remove worktrees
+./scripts/worktree.sh remove web web-feat-3-web-fix-config-service-abc123
+./scripts/worktree.sh remove main-server main-server-feat-3-main-server-verify-api-contract-def456
+
+# Output:
+# ✅ Worktree removed: web-feat-3-web-fix-config-service-abc123
+# ✅ Worktree removed: main-server-feat-3-main-server-verify-api-contract-def456
+```
+
+**Post Cleanup Comment on Issue:**
+
+```bash
+gh issue comment 3 -b "✅ Worktrees cleaned up. Ready for production deployment."
+```
+
+**Cleanup Benefits:**
+- Single-use worktrees removed after use
+- No stale worktrees accumulating
+- Clean environment for next issue
+- Automatic tracking of completed work
+
+---
 
 **Coordinator Report:**
 ```

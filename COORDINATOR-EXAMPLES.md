@@ -2,6 +2,21 @@
 
 This document provides examples of how to request features, bug fixes, and other work using the `@coordinator` agent.
 
+## Git Worktree Workflow
+
+All coordinator work now uses **git worktrees** for isolated development. When you create an issue, the coordinator will:
+
+1. **Create dedicated worktrees** for each service involved
+2. **Route specialists** to their isolated worktree paths
+3. **Monitor parallel work** with no conflicts
+4. **Clean up worktrees** after PR merge and QA approval
+
+**Load the skill for details**: `skill({ name: "git-worktree" })`
+
+See [COORDINATOR-WORKFLOW.md](./COORDINATOR-WORKFLOW.md) for complete workflow with worktrees.
+
+---
+
 ## Quick Start
 
 Use this format to request work:
@@ -333,6 +348,185 @@ Services affected:
 
 [Optional: acceptance criteria as checklist]
 ```
+
+---
+
+## Git Worktree Workflow Examples
+
+All coordinator work now uses **isolated git worktrees** for clean parallel development.
+
+### Example 1: Single Service with Worktree
+
+**Issue**: #123 - Fix user authentication bug in main-server
+
+**Coordinator Actions:**
+
+```bash
+# Step 1: Create GitHub issue
+gh issue create --title "Fix user authentication bug" \
+  --body "JWT token validation failing for certain user roles"
+
+# Step 2: Create worktree for specialist
+./scripts/worktree.sh create main-server feat/123-main-server/fix-auth-bug
+
+# Output:
+# ✅ Worktree created at: .worktrees/main-server-feat-123-main-server-fix-auth-bug-abc123/
+```
+
+**Specialist (Agent) Actions:**
+
+```bash
+# Work in assigned worktree
+cd .worktrees/main-server-feat-123-main-server-fix-auth-bug-abc123/
+
+# Verify branch
+git branch -v
+# * feat/123-main-server/fix-auth-bug
+
+# Make changes
+# ... fix the bug ...
+
+# Commit with proper format
+git add .
+git commit -m "fix(main-server): validate JWT token for all user roles
+
+- Add role-based token validation
+- Fix race condition in token refresh
+- Add comprehensive unit tests
+
+Closes #123"
+
+# Push
+git push -u origin feat/123-main-server/fix-auth-bug
+
+# Create PR from pushed branch
+# (Coordinator monitors PR)
+```
+
+**Coordinator Actions (Cleanup):**
+
+```bash
+# After PR merge and QA approval:
+./scripts/worktree.sh remove main-server main-server-feat-123-main-server-fix-auth-bug-abc123
+
+# Post cleanup comment
+gh issue comment 123 -b "✅ Worktrees cleaned up. Ready for deployment."
+```
+
+---
+
+### Example 2: Multi-Service with Parallel Worktrees
+
+**Issue**: #124 - Implement OAuth 2.0 support (multiple services)
+
+**Coordinator Actions:**
+
+```bash
+# Create GitHub issue
+gh issue create --title "Implement OAuth 2.0 support" \
+  --body "Add OAuth 2.0 authentication to main-server and web"
+
+# Create isolated worktrees for each service
+./scripts/worktree.sh create main-server feat/124-main-server/oauth-provider
+./scripts/worktree.sh create config-server feat/124-config-server/oauth-config
+./scripts/worktree.sh create web feat/124-web/oauth-integration
+
+# Output:
+# ✅ main-server worktree: .worktrees/main-server-feat-124-main-server-oauth-provider-abc/
+# ✅ config-server worktree: .worktrees/config-server-feat-124-config-server-oauth-config-def/
+# ✅ web worktree: .worktrees/web-feat-124-web-oauth-integration-ghi/
+```
+
+**Specialists Work Independently (No Conflicts):**
+
+```
+Specialist 1 (Agent-1):
+  Worktree: .worktrees/main-server-feat-124.../
+  Task: Implement OAuth provider endpoints
+  Work: Independent in their worktree
+
+Specialist 2 (Agent-2):
+  Worktree: .worktrees/config-server-feat-124.../
+  Task: Add OAuth config storage
+  Work: Independent in their worktree (no conflicts!)
+
+Specialist 3 (Agent-3):
+  Worktree: .worktrees/web-feat-124.../
+  Task: Implement OAuth login UI
+  Work: Independent in their worktree (no conflicts!)
+
+All three work in parallel without interfering!
+```
+
+**Coordinator Monitoring:**
+
+```bash
+# Check all worktrees
+./scripts/worktree.sh list
+
+# Output:
+# Service                    Branch                      Locked  Path
+# ------                     ------                      ------  ----
+# main-server-feat-124-main  feat/124-main-server/...   no      main-server-feat-124-main-server-oauth-provider-abc
+# config-server-feat-124     feat/124-config-server/...  no      config-server-feat-124-config-server-oauth-config-def
+# web-feat-124-web           feat/124-web/oauth-...      no      web-feat-124-web-oauth-integration-ghi
+```
+
+**After All PRs Approved:**
+
+```bash
+# Remove all worktrees
+./scripts/worktree.sh remove main-server main-server-feat-124-main-server-oauth-provider-abc
+./scripts/worktree.sh remove config-server config-server-feat-124-config-server-oauth-config-def
+./scripts/worktree.sh remove web web-feat-124-web-oauth-integration-ghi
+
+# Post cleanup comment
+gh issue comment 124 -b "✅ All 3 worktrees cleaned up. OAuth 2.0 deployed to production."
+```
+
+---
+
+### Example 3: Multi-Branch Testing (Same Service)
+
+**Scenario**: Testing 2 different OAuth implementations on main-server
+
+**Coordinator Actions:**
+
+```bash
+# Create two worktrees for same service with different branches
+./scripts/worktree.sh create main-server feat/124-main-server-oauth-v1
+./scripts/worktree.sh create main-server feat/124-main-server-oauth-v2
+
+# Specialist can compare implementations
+# .worktrees/main-server-feat-124-main-server-oauth-v1-abc/
+# .worktrees/main-server-feat-124-main-server-oauth-v2-def/
+```
+
+**Specialist Compares:**
+
+```bash
+# Test implementation v1
+cd .worktrees/main-server-feat-124-main-server-oauth-v1-abc/
+npm test
+
+# Compare with v2
+cd ../.worktrees/main-server-feat-124-main-server-oauth-v2-def/
+npm test
+
+# Decide which is better, submit that PR
+```
+
+---
+
+## Worktree Benefits Visible in Examples
+
+| Benefit | Example |
+|---------|---------|
+| **Isolation** | Example 2 shows 3 agents working simultaneously without conflicts |
+| **Single-use** | All examples show worktrees created fresh per issue |
+| **Easy cleanup** | Simple command to remove after merge |
+| **Multi-branch** | Example 3 shows testing multiple implementations |
+| **Parallel work** | Example 2 demonstrates true parallelism |
 
 ---
 
