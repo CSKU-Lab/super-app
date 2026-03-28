@@ -1,0 +1,162 @@
+# Test Environment Docker Compose Configuration
+# This is a completely isolated test environment that runs alongside the dev environment
+# All services use different ports to avoid conflicts
+
+services:
+  # PostgreSQL Test Database (Port 5433 - different from dev 5432)
+  test-db:
+    image: postgres:18
+    container_name: super-app-test-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_DB: test_main_server
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres/:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_main_server"]
+      interval: 5s
+      retries: 10
+      start_period: 30s
+      timeout: 5s
+    networks:
+      - test-network
+
+  # MongoDB Test Instance (Port 27018 - different from dev 27017)
+  test-mongo:
+    image: mongo:8-noble
+    container_name: super-app-test-mongo
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: test_root
+      MONGO_INITDB_ROOT_PASSWORD: test_root_password
+      MONGO_CONFIG_USERNAME: test_config_user
+      MONGO_CONFIG_PASSWORD: test_config_password
+      MONGO_TASK_USERNAME: test_task_user
+      MONGO_TASK_PASSWORD: test_task_password
+      MONGO_CONFIG_DB: test_config_server
+      MONGO_TASK_DB: test_task_server
+    volumes:
+      - test_mongo_data:/data/db
+      - ./scripts/mongo:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://localhost:27017/admin",
+          "--eval",
+          "db.runCommand({ ping: 1 })",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - test-network
+
+  # Redis Test Instance (Port 6380 - different from dev 6379)
+  test-redis:
+    image: redis:7-alpine
+    container_name: super-app-test-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --requirepass test_password --save 20 1 --loglevel warning
+    volumes:
+      - test_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "test_password", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - test-network
+
+  # RabbitMQ Test Instance (Port 5673 - different from dev 5672)
+  test-rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: super-app-test-rabbitmq
+    hostname: test-queue
+    ports:
+      - "5673:5672"      # AMQP port
+      - "15673:15672"    # Management UI (different from dev 15672)
+    volumes:
+      - test_rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: test_user
+      RABBITMQ_DEFAULT_PASS: test_password
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 10
+      start_period: 30s
+      timeout: 5s
+    networks:
+      - test-network
+
+  # MinIO Test Instance (Port 9010 - different from dev 9000)
+  test-minio:
+    image: quay.io/minio/minio
+    container_name: super-app-test-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: test_minio_user
+      MINIO_ROOT_PASSWORD: test_minio_password
+    volumes:
+      - test_minio_data:/data
+    ports:
+      - "9010:9000"      # API port
+      - "9011:9001"      # Console port (different from dev 9001)
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      retries: 10
+      start_period: 30s
+      timeout: 5s
+    networks:
+      - test-network
+
+  # Test MinIO Setup (creates test bucket)
+  test-minio-setup:
+    image: quay.io/minio/mc
+    container_name: super-app-test-minio-setup
+    depends_on:
+      test-minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add local http://test-minio:9000 test_minio_user test_minio_password;
+      /usr/bin/mc mb local/test-bucket || true;
+      /usr/bin/mc policy set public local/test-bucket || true;
+      exit 0;
+      "
+    networks:
+      - test-network
+
+volumes:
+  test_postgres_data:
+    driver: local
+  test_mongo_data:
+    driver: local
+  test_redis_data:
+    driver: local
+  test_rabbitmq_data:
+    driver: local
+  test_minio_data:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
+    name: super-app-test-network
