@@ -428,6 +428,124 @@ export function useAuth() {
 ✅ Accessibility (ARIA labels, semantic HTML)
 ✅ >80% test coverage for components
 
+## Package Manager: pnpm ONLY ⚠️
+
+**🚨 CRITICAL**: Frontend development uses **pnpm ONLY**. Never use npm or yarn.
+
+### Why pnpm?
+
+- **Workspace Support**: Seamless monorepo management
+- **Efficiency**: Faster installation, smaller disk footprint
+- **Lock Files**: Deterministic, reliable builds
+- **Strict Dependencies**: Prevents phantom dependencies
+- **Performance**: Better caching and linking
+
+### Frontend-Dev MUST DO Rules
+
+1. **Install Dependencies**: ONLY `pnpm install` (not `npm install`)
+2. **Run Tests**: ONLY `pnpm test` (not `npm test`)
+3. **Build Project**: ONLY `pnpm build` (not `npm run build`)
+4. **Lint Code**: ONLY `pnpm lint` (not `npm run lint`)
+5. **Start Dev Server**: ONLY `pnpm dev` (not `npm run dev`)
+6. **Add Packages**: ONLY `pnpm add <package>` (not `npm install`)
+7. **Remove Packages**: ONLY `pnpm remove <package>` (not `npm uninstall`)
+8. **Run Scripts**: ONLY `pnpm <script-name>` (not `npm run <script-name>`)
+
+### Frontend-Dev MUST NOT Rules
+
+1. ❌ **Never run `npm install`** - Use `pnpm install`
+2. ❌ **Never run `npm test`** - Use `pnpm test`
+3. ❌ **Never run `npm run ...`** - Use `pnpm ...`
+4. ❌ **Never use yarn** - It's not configured
+5. ❌ **Never commit `node_modules`** - pnpm handles lockfile
+
+### pnpm Command Reference
+
+```bash
+# Install dependencies (from package.json)
+pnpm install
+
+# Run test suite with coverage
+pnpm test -- --coverage
+
+# Run tests in watch mode
+pnpm test -- --watch
+
+# Build project for production
+pnpm build
+
+# Start development server
+pnpm dev
+
+# Lint code with ESLint
+pnpm lint
+
+# Format code with Prettier
+pnpm format
+
+# Add new dependency
+pnpm add lodash
+
+# Remove dependency
+pnpm remove lodash
+
+# Add dev dependency
+pnpm add -D @types/node
+```
+
+### Frontend Testing Commands
+
+```bash
+# From /web directory
+cd web
+
+# Install dependencies (if needed)
+pnpm install
+
+# Run all tests
+pnpm test
+
+# Run tests with coverage
+pnpm test -- --coverage
+
+# Run specific test file
+pnpm test UserProfile.test.tsx
+
+# Run tests in watch mode
+pnpm test -- --watch
+
+# Generate coverage report
+pnpm test -- --coverage --silent
+```
+
+### Expected package.json Scripts
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write .",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  }
+}
+```
+
+### Frontend-Dev Verification Checklist
+
+- [ ] Dependencies installed with `pnpm install`
+- [ ] Tests run with `pnpm test`
+- [ ] Tests pass and coverage >80%
+- [ ] No npm-lock.json or yarn.lock files committed
+- [ ] pnpm-lock.yaml is up-to-date
+- [ ] Build succeeds with `pnpm build`
+- [ ] Dev server starts with `pnpm dev`
+- [ ] No "npm" or "yarn" commands in code/docs
+
 ## Commit Message Format
 
 ```
