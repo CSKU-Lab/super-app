@@ -1,7 +1,7 @@
 ---
 description: Implements features in Go microservices following clean architecture
 mode: subagent
-model: github-copilot/claude-sonnet-4.6
+model: github-copilot/claude-sonnet-4.5
 temperature: 0.2
 ---
 
