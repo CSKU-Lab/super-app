@@ -238,23 +238,48 @@ When ready for production release:
 
 ## Important Rules
 
-### ✅ DO
+### ⚠️ CRITICAL REMINDERS
+
+**For Submodules (main-server, config-server, task-server, go-grader, web, api-docs):**
+**NEVER push directly to `main` or `develop`. All changes MUST go through PRs to `develop`.**
+
+**For Super-App Repository (agent configs, infrastructure):**
+**Can push directly to `main` since it contains only configuration/infrastructure code.**
+
+```bash
+# ❌ WRONG - Never do this in submodules:
+git push origin main  # submodule
+git push origin develop  # submodule
+
+# ✅ CORRECT - Always do this in submodules:
+git checkout -b feature/my-feature develop
+git push -u origin feature/my-feature
+gh pr create --base develop
+gh pr merge <PR_NUMBER> --squash
+
+# ✅ OK - Can do this in super-app repo (agent configs only):
+git push origin main  # super-app only for agent configs
+```
+
+### ✅ DO (for Submodules)
 
 - Create feature branches from `develop`
 - Use descriptive branch names
 - Write clear commit messages
-- Create PRs for all changes
+- Create PRs for all changes (target: `develop`)
 - Request code reviews
 - Keep commits focused and atomic
 - Test locally before pushing
 - Rebase feature branches on latest develop
 - Use "Squash and merge" for feature branches
+- **Always create PRs to `develop`, NEVER to `main`**
 
-### ❌ DON'T
+### ❌ DON'T (for Submodules)
 
 - **NEVER** force push to `main` or `develop`
 - **NEVER** commit directly to `main` or `develop`
 - **NEVER** merge feature branches directly to `main`
+- **NEVER** push to `main` or `develop` branches directly
 - **NEVER** use generic branch names (`feature/new`, `fix/bug`)
 - **NEVER** skip code review
 - **NEVER** leave conflicts unresolved
