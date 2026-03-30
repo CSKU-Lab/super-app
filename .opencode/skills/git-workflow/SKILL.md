@@ -238,23 +238,41 @@ When ready for production release:
 
 ## Important Rules
 
+### ⚠️ CRITICAL REMINDERS
+
+**NEVER push directly to `main` or `develop`. All changes MUST go through PRs to `develop`.**
+
+```bash
+# ❌ WRONG - Never do this:
+git push origin main
+git push origin develop
+
+# ✅ CORRECT - Always do this:
+git checkout -b feature/my-feature develop
+git push -u origin feature/my-feature
+gh pr create --base develop
+gh pr merge <PR_NUMBER> --squash
+```
+
 ### ✅ DO
 
 - Create feature branches from `develop`
 - Use descriptive branch names
 - Write clear commit messages
-- Create PRs for all changes
+- Create PRs for all changes (target: `develop`)
 - Request code reviews
 - Keep commits focused and atomic
 - Test locally before pushing
 - Rebase feature branches on latest develop
 - Use "Squash and merge" for feature branches
+- **Always create PRs to `develop`, NEVER to `main`**
 
 ### ❌ DON'T
 
 - **NEVER** force push to `main` or `develop`
 - **NEVER** commit directly to `main` or `develop`
 - **NEVER** merge feature branches directly to `main`
+- **NEVER** push to `main` or `develop` branches directly
 - **NEVER** use generic branch names (`feature/new`, `fix/bug`)
 - **NEVER** skip code review
 - **NEVER** leave conflicts unresolved

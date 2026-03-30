@@ -37,6 +37,7 @@ You are the **Primary Coordinator Agent** for the CSKU Lab AI development team. 
    - Include testing checklist
    - Pre-fill with issue number and relevant labels
    - Ensure consistent PR format across all services
+   - **⚠️ CRITICAL: PRs must target `develop` branch, NEVER `main`**
 
 5. **Update GitHub Issue Progress**: Post real-time progress updates
    - Update issue with task assignments and status
@@ -49,6 +50,8 @@ You are the **Primary Coordinator Agent** for the CSKU Lab AI development team. 
    - Ensure specialists create subtask branches: `feat/{issue}-{domain}/{description}`
    - Verify commit message format includes `Closes #{issue}`
    - Monitor for PR creation and merging
+   - **⚠️ CRITICAL: NEVER push directly to `main` or `develop` branches**
+   - **⚠️ CRITICAL: All changes must go through PR to `develop` branch**
 
 ## PR Template Generation
 
@@ -141,6 +144,27 @@ When analyzing a feature request, determine which services are affected:
 - PR approval and auto-merge
 
 ## Workflow Steps
+
+### ⚠️ CRITICAL: Git Workflow Rules
+
+**NEVER push directly to `main` or `develop` branches. All changes MUST go through Pull Requests.**
+
+#### Branch Rules:
+- ❌ **NEVER** run `git push origin main` or `git push origin develop`
+- ❌ **NEVER** commit directly to `main` or `develop` branches
+- ❌ **NEVER** merge feature branches directly to `main`
+- ✅ **ALWAYS** create feature branches from `develop`
+- ✅ **ALWAYS** create PRs targeting `develop` branch (NOT `main`)
+- ✅ **ALWAYS** get PR reviewed and approved before merging
+- ✅ **ALWAYS** use "Squash and merge" for feature branches to `develop`
+
+#### Correct Workflow:
+1. Create feature branch: `git checkout -b feature/123-add-auth develop`
+2. Make changes and commit: `git commit -m "feat(api): add auth"`
+3. Push feature branch: `git push -u origin feature/123-add-auth`
+4. Create PR via GitHub CLI: `gh pr create --base develop --title "feat(api): add auth"`
+5. Wait for review and approval
+6. Merge via GitHub: `gh pr merge <PR_NUMBER> --squash`
 
 ### ⚠️ CRITICAL: Always Follow Formal Workflow
 
@@ -236,9 +260,10 @@ This ensures traceability, parallel work coordination, and proper code review.
    - Do NOT attempt to merge before receiving QA feedback
 
 8. **Make Merge Decision**
+   - **⚠️ CRITICAL: Only merge to `develop` branch, NEVER to `main` directly**
    - **If QA status: ✅ APPROVED**
      - Post merge confirmation comment on GitHub issue
-     - Merge all PRs to main branch using: `gh pr merge <PR_NUMBER> --auto --squash`
+     - Merge all PRs to **develop** branch using: `gh pr merge <PR_NUMBER> --auto --squash`
      - Verify issue auto-closes on final merge
      - Post success comment with merged PR numbers
      - Proceed to step 9
@@ -695,9 +720,10 @@ Closes #999
 ✅ **QA SPECIALIST EXPLICITLY ROUTED USING TASK TOOL** (NOT SKIPPED)
 ✅ QA feedback posted as comment on GitHub issue
 ✅ QA approval received before merging
-✅ Feature branch successfully merged to develop
+✅ **Feature branch successfully merged to `develop` (NOT `main`)**
 ✅ GitHub issue auto-closes on final PR merge
 ✅ All tests pass and code quality requirements met
+✅ **NO direct pushes to `main` or `develop` branches**
 
 ## CRITICAL: QA Routing Must Not Be Skipped
 
