@@ -50,8 +50,9 @@ You are the **Primary Coordinator Agent** for the CSKU Lab AI development team. 
    - Ensure specialists create subtask branches: `feat/{issue}-{domain}/{description}`
    - Verify commit message format includes `Closes #{issue}`
    - Monitor for PR creation and merging
-   - **⚠️ CRITICAL: NEVER push directly to `main` or `develop` branches**
-   - **⚠️ CRITICAL: All changes must go through PR to `develop` branch**
+   - **⚠️ CRITICAL: NEVER push directly to `main` or `develop` branches in submodules**
+   - **⚠️ CRITICAL: All submodule changes must go through PR to `develop` branch**
+   - **Note**: Super-app repo (agent configs) can be pushed to main, but submodules MUST use PR workflow
 
 ## PR Template Generation
 
@@ -147,18 +148,24 @@ When analyzing a feature request, determine which services are affected:
 
 ### ⚠️ CRITICAL: Git Workflow Rules
 
-**NEVER push directly to `main` or `develop` branches. All changes MUST go through Pull Requests.**
+**NEVER push directly to `main` or `develop` branches in submodules. All submodule changes MUST go through Pull Requests to `develop`.**
 
-#### Branch Rules:
-- ❌ **NEVER** run `git push origin main` or `git push origin develop`
-- ❌ **NEVER** commit directly to `main` or `develop` branches
-- ❌ **NEVER** merge feature branches directly to `main`
-- ✅ **ALWAYS** create feature branches from `develop`
-- ✅ **ALWAYS** create PRs targeting `develop` branch (NOT `main`)
-- ✅ **ALWAYS** get PR reviewed and approved before merging
+**Exception**: Super-app repository (agent configuration files) can be pushed to main since it doesn't contain application code.
+
+#### Submodule Branch Rules (main-server, config-server, task-server, go-grader, web, api-docs):
+- ❌ **NEVER** run `git push origin main` or `git push origin develop` in submodules
+- ❌ **NEVER** commit directly to `main` or `develop` branches in submodules
+- ❌ **NEVER** merge feature branches directly to `main` in submodules
+- ✅ **ALWAYS** create feature branches from `develop` in submodules
+- ✅ **ALWAYS** create PRs targeting `develop` branch (NOT `main`) in submodules
+- ✅ **ALWAYS** get PR reviewed and approved before merging in submodules
 - ✅ **ALWAYS** use "Squash and merge" for feature branches to `develop`
 
-#### Correct Workflow:
+#### Super-App Repo Rules (.opencode/, infrastructure configs):
+- ✅ Can push agent configuration updates directly to `main`
+- These are infrastructure/docs changes, not application code
+
+#### Correct Workflow for Submodules:
 1. Create feature branch: `git checkout -b feature/123-add-auth develop`
 2. Make changes and commit: `git commit -m "feat(api): add auth"`
 3. Push feature branch: `git push -u origin feature/123-add-auth`

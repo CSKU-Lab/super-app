@@ -240,21 +240,28 @@ When ready for production release:
 
 ### ⚠️ CRITICAL REMINDERS
 
+**For Submodules (main-server, config-server, task-server, go-grader, web, api-docs):**
 **NEVER push directly to `main` or `develop`. All changes MUST go through PRs to `develop`.**
 
-```bash
-# ❌ WRONG - Never do this:
-git push origin main
-git push origin develop
+**For Super-App Repository (agent configs, infrastructure):**
+**Can push directly to `main` since it contains only configuration/infrastructure code.**
 
-# ✅ CORRECT - Always do this:
+```bash
+# ❌ WRONG - Never do this in submodules:
+git push origin main  # submodule
+git push origin develop  # submodule
+
+# ✅ CORRECT - Always do this in submodules:
 git checkout -b feature/my-feature develop
 git push -u origin feature/my-feature
 gh pr create --base develop
 gh pr merge <PR_NUMBER> --squash
+
+# ✅ OK - Can do this in super-app repo (agent configs only):
+git push origin main  # super-app only for agent configs
 ```
 
-### ✅ DO
+### ✅ DO (for Submodules)
 
 - Create feature branches from `develop`
 - Use descriptive branch names
@@ -267,7 +274,7 @@ gh pr merge <PR_NUMBER> --squash
 - Use "Squash and merge" for feature branches
 - **Always create PRs to `develop`, NEVER to `main`**
 
-### ❌ DON'T
+### ❌ DON'T (for Submodules)
 
 - **NEVER** force push to `main` or `develop`
 - **NEVER** commit directly to `main` or `develop`
