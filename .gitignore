@@ -33,3 +33,8 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+# Added by code-review-graph
+.code-review-graph/
+
+# playwright mcp
+.playwright-mcp/
