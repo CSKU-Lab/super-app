@@ -1,0 +1,322 @@
+services:
+  # ==================== Application Services ====================
+  main-server:
+    image: cskulab/main-server:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - API_URL=${MAIN_SERVER_API_URL}
+      - PORT=${MAIN_SERVER_PORT:-8080}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - COOKIE_DOMAIN=${MAIN_SERVER_COOKIE_DOMAIN}
+      - FRONTEND_URL=${MAIN_SERVER_FRONTEND_URL}
+      - DEV_MODE=${MAIN_SERVER_DEV_MODE:-false}
+      - GOOGLE_CLIENT_ID_FILE=/run/secrets/google_client_id
+      - GOOGLE_CLIENT_SECRET_FILE=/run/secrets/google_client_secret
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - JWT_REFRESH_SECRET_FILE=/run/secrets/jwt_refresh_secret
+      - S3_ACCESS_KEY_ID_FILE=/run/secrets/s3_access_key_id
+      - S3_SECRET_ACCESS_KEY_FILE=/run/secrets/s3_secret_access_key
+      - S3_USE_SSL=${MAIN_SERVER_S3_USE_SSL:-false}
+      - S3_BUCKET=${MAIN_SERVER_S3_BUCKET}
+      - S3_ENDPOINT=http://s3:9000
+      - S3_FRONTEND_URL=${MAIN_SERVER_S3_FRONTEND_URL}
+      - CONFIG_SERVER_URL=config-server:8081
+      - GRADER_SERVER_URL=go-grader-master:50052
+      - TASK_SERVER_URL=task-server:50051
+      - RBMQ_SERVER_URL=amqp://admin:RABBITMQ_PASSWORD_FILE@rabbitmq:5672/
+      - REDIS_SERVER_URL=redis://cache:6379
+    secrets:
+      - google_client_id
+      - google_client_secret
+      - jwt_secret
+      - jwt_refresh_secret
+      - s3_access_key_id
+      - s3_secret_access_key
+      - rabbitmq_password
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+      task-server:
+        condition: service_healthy
+      go-grader-master:
+        condition: service_healthy
+    networks:
+      - super-app-network
+
+  config-server:
+    image: cskulab/config-server:latest
+    restart: unless-stopped
+    ports: []
+    environment:
+      - MONGO_URI=mongodb://config_server:MONGO_CONFIG_PASSWORD_FILE@mongo:27017/config_server
+      - PORT=8081
+      - DATABASE_NAME=${MONGO_CONFIG_DB:-config_server}
+      - ENV=docker
+      - TASK_SERVER_URL=task-server:50051
+      - GO_GRADER_SERVER_URL=go-grader-master:50052
+      - REDIS_SERVER_URL=redis://cache:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - mongo_config_password
+      - redis_password
+    depends_on:
+      mongo:
+        condition: service_healthy
+      cache:
+        condition: service_started
+    networks:
+      - super-app-network
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  task-server:
+    image: cskulab/task-server:latest
+    restart: unless-stopped
+    ports: []
+    environment:
+      - MONGO_URI=mongodb://task_server:MONGO_TASK_PASSWORD_FILE@mongo:27017/task_server
+      - PORT=50051
+      - DATABASE_NAME=${MONGO_TASK_DB:-task_server}
+      - ENV=docker
+      - GRADER_SERVER_URL=go-grader-master:50052
+      - REDIS_SERVER_URL=redis://cache:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - mongo_task_password
+      - redis_password
+    depends_on:
+      mongo:
+        condition: service_healthy
+      cache:
+        condition: service_started
+      go-grader-master:
+        condition: service_healthy
+    networks:
+      - super-app-network
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50051"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  go-grader-master:
+    image: cskulab/go-grader-master:latest
+    restart: unless-stopped
+    ports: []
+    environment:
+      - RBMQ_SERVER_URL=amqp://admin:RABBITMQ_PASSWORD_FILE@rabbitmq:5672/
+      - PORT=50052
+      - ENV=docker
+    secrets:
+      - rabbitmq_password
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - super-app-network
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=localhost:50052"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  go-grader-worker:
+    image: cskulab/go-grader-worker:latest
+    restart: unless-stopped
+    privileged: true
+    ports: []
+    environment:
+      - ENV=docker
+      - CONFIG_SERVER_URL=config-server:8081
+      - TASK_SERVER_URL=task-server:50051
+      - RBMQ_SERVER_URL=amqp://admin:RABBITMQ_PASSWORD_FILE@rabbitmq:5672/
+      - RUN_QUEUE_AMOUNT=${GO_GRADER_RUN_QUEUE_AMOUNT:-1}
+      - GRADE_QUEUE_AMOUNT=${GO_GRADER_GRADE_QUEUE_AMOUNT:-10}
+    secrets:
+      - rabbitmq_password
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      task-server:
+        condition: service_healthy
+    networks:
+      - super-app-network
+
+  # ==================== Infrastructure Services ====================
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-cs_pg_user}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres_password
+      - POSTGRES_DB=${POSTGRES_DB:-main-server}
+    ports: []
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/postgres/:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cs_pg_user} -d ${POSTGRES_DB:-main-server}"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    networks:
+      - super-app-network
+
+  s3:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    environment:
+      - MINIO_ROOT_USER_FILE=/run/secrets/minio_root_user
+      - MINIO_ROOT_PASSWORD_FILE=/run/secrets/minio_root_password
+    secrets:
+      - minio_root_user
+      - minio_root_password
+    volumes:
+      - minio_data:/data
+    ports: []
+    command: ["server", "/data", "--console-address", ":9001"]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    networks:
+      - super-app-network
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    hostname: rabbitmq
+    restart: unless-stopped
+    ports: []
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS_FILE=/run/secrets/rabbitmq_password
+    secrets:
+      - rabbitmq_password
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
+    networks:
+      - super-app-network
+
+  mongo:
+    image: mongo:8-noble
+    restart: unless-stopped
+    ports: []
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME_FILE=/run/secrets/mongo_root_username
+      - MONGO_INITDB_ROOT_PASSWORD_FILE=/run/secrets/mongo_root_password
+      - MONGO_CONFIG_USERNAME=config_server
+      - MONGO_CONFIG_PASSWORD_FILE=/run/secrets/mongo_config_password
+      - MONGO_TASK_USERNAME=task_server
+      - MONGO_TASK_PASSWORD_FILE=/run/secrets/mongo_task_password
+      - MONGO_CONFIG_DB=${MONGO_CONFIG_DB:-config_server}
+      - MONGO_TASK_DB=${MONGO_TASK_DB:-task_server}
+    secrets:
+      - mongo_root_username
+      - mongo_root_password
+      - mongo_config_password
+      - mongo_task_password
+    volumes:
+      - mongo_data:/data/db
+      - ./scripts/mongo:/docker-entrypoint-initdb.d/
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "--quiet",
+          "mongodb://localhost:27017/admin",
+          "--eval",
+          "db.runCommand({ ping: 1 })",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - super-app-network
+
+  cache:
+    image: redis:latest
+    restart: unless-stopped
+    ports: []
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-}
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    secrets:
+      - redis_password
+    volumes:
+      - cache:/data
+    networks:
+      - super-app-network
+
+networks:
+  super-app-network:
+    driver: bridge
+
+volumes:
+  cache:
+  postgres_data:
+  rabbitmq_data:
+  mongo_data:
+  minio_data:
+
+secrets:
+  google_client_id:
+    file: ./secrets/google_client_id.txt
+  google_client_secret:
+    file: ./secrets/google_client_secret.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  jwt_refresh_secret:
+    file: ./secrets/jwt_refresh_secret.txt
+  s3_access_key_id:
+    file: ./secrets/s3_access_key_id.txt
+  s3_secret_access_key:
+    file: ./secrets/s3_secret_access_key.txt
+  postgres_password:
+    file: ./secrets/postgres_password.txt
+  minio_root_user:
+    file: ./secrets/minio_root_user.txt
+  minio_root_password:
+    file: ./secrets/minio_root_password.txt
+  rabbitmq_password:
+    file: ./secrets/rabbitmq_password.txt
+  mongo_root_username:
+    file: ./secrets/mongo_root_username.txt
+  mongo_root_password:
+    file: ./secrets/mongo_root_password.txt
+  mongo_config_password:
+    file: ./secrets/mongo_config_password.txt
+  mongo_task_password:
+    file: ./secrets/mongo_task_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
