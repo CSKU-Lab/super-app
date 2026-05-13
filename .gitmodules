@@ -19,3 +19,6 @@
 [submodule "api-docs"]
 	path = api-docs
 	url = git@github.com:CSKU-Lab/api-docs.git
+[submodule "gitops"]
+	path = gitops
+	url = git@github.com:CSKU-Lab/gitops.git
