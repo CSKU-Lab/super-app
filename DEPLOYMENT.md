@@ -7,7 +7,8 @@ This guide explains how to deploy the Super App using Docker Compose in producti
 The production deployment includes:
 
 ### Application Services
-- **main-server** (port 8080) - Main API server
+- **main-server-api** (port 8080) - Main API server
+- **main-server-worker** - Background submission processing worker
 - **config-server** (port 8081) - Configuration gRPC service
 - **task-server** (port 50051) - Task management gRPC service
 - **go-grader-master** (port 50052) - Grader master node
@@ -110,7 +111,8 @@ docker compose up -d
 docker compose ps
 
 # View logs
-docker compose logs -f main-server
+docker compose logs -f main-server-api
+docker compose logs -f main-server-worker
 
 # Check service health
 docker compose ps --format "table {{.Name}}\t{{.Status}}"
@@ -123,10 +125,10 @@ docker compose ps --format "table {{.Name}}\t{{.Status}}"
 │                    External Traffic                         │
 │                         (port 8080)                         │
 └─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
+                               │
+                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      main-server                            │
+│                    main-server-api                          │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  Internal Network: super-app-network                 │   │
 │  │                                                       │   │
@@ -142,20 +144,20 @@ docker compose ps --format "table {{.Name}}\t{{.Status}}"
 │  │                    │  (privileged)  │                  │   │
 │  │                    └────────────────┘                  │   │
 │  └──────────────────────────────────────────────────────┘   │
-│                              │                               │
-│         ┌────────────────────┼────────────────────┐         │
-│         │                    │                    │         │
-│         ▼                    ▼                    ▼         │
-│  ┌─────────────┐      ┌─────────────┐      ┌──────────┐   │
-│  │  PostgreSQL │      │  MongoDB    │      │  Redis   │   │
-│  │    (db)     │      │   (mongo)   │      │ (cache)  │   │
-│  └─────────────┘      └─────────────┘      └──────────┘   │
-│                                                             │
-│  ┌─────────────┐      ┌─────────────┐                      │
-│  │  RabbitMQ   │      │    MinIO    │                      │
-│  │             │      │    (s3)     │                      │
-│  └─────────────┘      └─────────────┘                      │
 └─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                  main-server-worker                         │
+│  (processes submission outbox, no HTTP ports)               │
+└─────────────────────────────────────────────────────────────┘
+                               │
+         ┌─────────────────────┼─────────────────────┐
+         │                     │                     │
+         ▼                     ▼                     ▼
+  ┌─────────────┐      ┌─────────────┐      ┌──────────┐
+  │  PostgreSQL │      │  RabbitMQ   │      │  Redis   │
+  │    (db)     │      │             │      │ (cache)  │
+  └─────────────┘      └─────────────┘      └──────────┘
 ```
 
 ## Configuration Reference
@@ -198,17 +200,20 @@ docker compose ps --format "table {{.Name}}\t{{.Status}}"
 docker compose logs -f
 
 # Specific service
-docker compose logs -f main-server
+docker compose logs -f main-server-api
+docker compose logs -f main-server-worker
 
 # Last 100 lines
-docker compose logs --tail=100 main-server
+docker compose logs --tail=100 main-server-api
+docker compose logs --tail=100 main-server-worker
 ```
 
 ### Restarting Services
 
 ```bash
 # Restart single service
-docker compose restart main-server
+docker compose restart main-server-api
+docker compose restart main-server-worker
 
 # Restart all services
 docker compose restart
@@ -240,8 +245,8 @@ docker compose up -d --force-recreate
 # Check service health status
 docker compose ps
 
-# Test main-server health
-curl http://localhost:8080/health
+# Test main-server-api health
+curl http://localhost:8080/api/health
 
 # Test gRPC services (requires grpc_health_probe)
 grpc_health_probe -addr=localhost:8081  # config-server
@@ -412,11 +417,11 @@ Services expose metrics that can be scraped by Prometheus:
 ### Horizontal Scaling
 
 ```bash
-# Scale go-grader-worker
-docker compose up -d --scale go-grader-worker=3
+# Scale API servers (behind load balancer / Traefik)
+docker compose up -d --scale main-server-api=3
 
-# Scale main-server (requires load balancer)
-docker compose up -d --scale main-server=3
+# Scale workers based on submission queue depth
+docker compose up -d --scale main-server-worker=2
 ```
 
 ### Vertical Scaling
@@ -425,7 +430,17 @@ Adjust resource limits in `docker-compose.yaml`:
 
 ```yaml
 services:
-  main-server:
+  main-server-api:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  main-server-worker:
     deploy:
       resources:
         limits:

@@ -1,8 +1,9 @@
 services:
   # ==================== Application Services ====================
-  main-server:
+  main-server-api:
     image: cskulab/main-server:latest
     restart: unless-stopped
+    command: ["-mode", "api"]
     ports:
       - "8080:8080"
     environment:
@@ -50,6 +51,33 @@ services:
         condition: service_healthy
       go-grader-master:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - super-app-network
+
+  main-server-worker:
+    image: cskulab/main-server:latest
+    restart: unless-stopped
+    command: ["-mode", "worker"]
+    ports: []
+    environment:
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - RBMQ_SERVER_URL=amqp://admin:RABBITMQ_PASSWORD_FILE@rabbitmq:5672/
+      - REDIS_SERVER_URL=redis://cache:6379
+    secrets:
+      - rabbitmq_password
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      cache:
+        condition: service_started
     networks:
       - super-app-network
 
