@@ -58,7 +58,9 @@ services:
     restart: unless-stopped
     ports: []
     environment:
-      - MONGO_URI=mongodb://config_server:MONGO_CONFIG_PASSWORD_FILE@mongo:27017/config_server
+      - MONGO_URI=mongodb://mongo:27017/config_server
+      - MONGO_USERNAME=config_server
+      - MONGO_PASSWORD=${MONGO_CONFIG_PASSWORD}
       - PORT=8081
       - DATABASE_NAME=${MONGO_CONFIG_DB:-config_server}
       - ENV=docker
@@ -88,7 +90,9 @@ services:
     restart: unless-stopped
     ports: []
     environment:
-      - MONGO_URI=mongodb://task_server:MONGO_TASK_PASSWORD_FILE@mongo:27017/task_server
+      - MONGO_URI=mongodb://mongo:27017/task_server
+      - MONGO_USERNAME=task_server
+      - MONGO_PASSWORD=${MONGO_TASK_PASSWORD}
       - PORT=50051
       - DATABASE_NAME=${MONGO_TASK_DB:-task_server}
       - ENV=docker
