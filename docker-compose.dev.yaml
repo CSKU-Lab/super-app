@@ -8,6 +8,8 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - OTEL_SERVICE_NAME=main-server
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - API_URL=${MAIN_SERVER_API_URL}
       - PORT=${MAIN_SERVER_PORT}
       - DATABASE_URL=${MAIN_SERVER_DATABASE_URL}
@@ -28,7 +30,9 @@ services:
       - GRADER_SERVER_URL=${MAIN_SERVER_GRADER_SERVER_URL}
       - TASK_SERVER_URL=${MAIN_SERVER_TASK_SERVER_URL}
       - RBMQ_SERVER_URL=${MAIN_SERVER_RBMQ_SERVER_URL}
-      - REDIS_SERVER_URL=${MAIN_SERVER_REDIS_SERVER_URL}
+      - REDIS_SERVER_URL=${MAIN_SERVER_REDIS_SERVER_URL:-redis://localhost:6379}
+      - REDIS_ADDR=${MAIN_SERVER_REDIS_ADDR:-localhost:6379}
+      - REDIS_PASSWORD=${MAIN_SERVER_REDIS_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
@@ -39,6 +43,8 @@ services:
     volumes:
       - ./config-server/:/app
     environment:
+      - OTEL_SERVICE_NAME=config-server
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - MONGO_URI=mongodb://mongo:27017/config_server
       - MONGO_USERNAME=${MONGO_CONFIG_USERNAME:-config_server}
       - MONGO_PASSWORD=${MONGO_CONFIG_PASSWORD:-config_password}
@@ -61,6 +67,8 @@ services:
     volumes:
       - ./task-server/:/app
     environment:
+      - OTEL_SERVICE_NAME=task-server
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - MONGO_URI=mongodb://mongo:27017/task_server
       - MONGO_USERNAME=${MONGO_TASK_USERNAME:-task_server}
       - MONGO_PASSWORD=${MONGO_TASK_PASSWORD:-task_server_password}
@@ -82,6 +90,8 @@ services:
     volumes:
       - ./go-grader/:/app
     environment:
+      - OTEL_SERVICE_NAME=go-grader-master
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - RBMQ_SERVER_URL=${GO_GRADER_RBMQ_SERVER_URL}
       - PORT=${GO_GRADER_PORT}
       - ENV=docker
@@ -98,6 +108,8 @@ services:
     volumes:
       - ./go-grader/:/app
     environment:
+      - OTEL_SERVICE_NAME=go-grader-worker
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
       - ENV=docker
       - CONFIG_SERVER_URL=${GO_GRADER_CONFIG_SERVER_URL}
       - TASK_SERVER_URL=${GO_GRADER_TASK_SERVER_URL}
@@ -107,6 +119,16 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.58
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
 
   #--- infrastructures---
 
