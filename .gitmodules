@@ -22,3 +22,6 @@
 [submodule "gitops"]
 	path = gitops
 	url = git@github.com:CSKU-Lab/gitops.git
+[submodule "og-service"]
+	path = og-service
+	url = git@github.com:CSKU-Lab/og-service.git
