@@ -143,6 +143,20 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  lsp-service:
+    build:
+      context: ./lsp-service/
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./lsp-service/:/app
+      - /app/node_modules
+    ports:
+      - "9090:9090"
+    environment:
+      - PORT=9090
+      - JWT_SECRET=${MAIN_SERVER_JWT_SECRET}
+    restart: unless-stopped
+
   jaeger:
     image: jaegertracing/all-in-one:1.58
     environment:

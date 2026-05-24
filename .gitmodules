@@ -25,3 +25,6 @@
 [submodule "og-service"]
 	path = og-service
 	url = git@github.com:CSKU-Lab/og-service.git
+[submodule "lsp-service"]
+	path = lsp-service
+	url = git@github.com:CSKU-Lab/lsp-service.git
