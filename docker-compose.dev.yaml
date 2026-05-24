@@ -30,12 +30,14 @@ services:
       - GRADER_SERVER_URL=${MAIN_SERVER_GRADER_SERVER_URL}
       - TASK_SERVER_URL=${MAIN_SERVER_TASK_SERVER_URL}
       - RBMQ_SERVER_URL=${MAIN_SERVER_RBMQ_SERVER_URL}
-      - REDIS_SERVER_URL=${MAIN_SERVER_REDIS_SERVER_URL:-redis://localhost:6379}
-      - REDIS_ADDR=${MAIN_SERVER_REDIS_ADDR:-localhost:6379}
+      - REDIS_SERVER_URL=${MAIN_SERVER_REDIS_SERVER_URL:-redis://cache:6379}
+      - REDIS_ADDR=${MAIN_SERVER_REDIS_ADDR:-cache:6379}
       - REDIS_PASSWORD=${MAIN_SERVER_REDIS_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
+      cache:
+        condition: service_started
   config-server:
     build:
       context: ./config-server/
@@ -119,6 +121,27 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+
+  og-service:
+    build:
+      context: ./og-service/
+      dockerfile: Dockerfile
+    volumes:
+      - ./og-service/:/app
+      - /app/node_modules
+    environment:
+      - RBMQ_SERVER_URL=amqp://admin:password@queue:5672
+      - S3_ENDPOINT=s3:9000
+      - S3_ACCESS_KEY_ID=${MINIO_ROOT_USER:-cs_minio_user}
+      - S3_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-cs_minio_password}
+      - S3_BUCKET=${MAIN_SERVER_S3_BUCKET:-cs-lab}
+      - S3_USE_SSL=false
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+    restart: unless-stopped
 
   jaeger:
     image: jaegertracing/all-in-one:1.58
