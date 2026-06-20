@@ -12,6 +12,10 @@
 
 This prevents accidental interference with in-progress work.
 
+## Commit Policy
+
+**NEVER commit anything unless the user explicitly says to commit.** Do not auto-commit after edits, fixes, or refactors. Wait for direct instruction.
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
