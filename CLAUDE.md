@@ -1,3 +1,17 @@
+## Submodule Worktree Rule
+
+**IMPORTANT: When working inside any submodule (`main-server`, `web`, etc.):**
+
+1. Run `git status` inside the submodule directory first.
+2. If uncommitted changes exist **and** you need to modify files — create a worktree from the current branch before touching anything:
+   ```bash
+   # inside the submodule
+   git worktree add ../worktrees/<submodule>-<task> <current-branch>
+   ```
+3. Do all edits inside the worktree. Never modify files directly in a submodule that has uncommitted changes.
+
+This prevents accidental interference with in-progress work.
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
