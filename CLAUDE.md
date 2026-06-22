@@ -12,6 +12,16 @@
 
 This prevents accidental interference with in-progress work.
 
+## Linear Task Status Rule
+
+**When working on a Linear task, update the task status to reflect current state:**
+
+- **In Progress** — when you start working on the task
+- **In Review** — when a PR is opened for the task
+- **Done** — when the task is fully merged/completed
+
+Use `mcp__linear-server__save_issue` to update status. Get the current status options via `mcp__linear-server__list_issue_statuses` for the team if unsure of exact status names.
+
 ## Commit Policy
 
 **NEVER commit anything unless the user explicitly says to commit.** Do not auto-commit after edits, fixes, or refactors. Wait for direct instruction.
