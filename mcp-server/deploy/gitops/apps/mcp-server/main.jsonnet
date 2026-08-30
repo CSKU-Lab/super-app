@@ -15,8 +15,6 @@ local cm = configmap.new({
     MCP_ADDR: ':' + std.toString(params.port),
     MCP_PATH: '/mcp',
     MAIN_SERVER_URL: params.mainServerUrl,
-    OTEL_SERVICE_NAME: 'mcp-server',
-    OTEL_EXPORTER_OTLP_ENDPOINT: 'http://jaeger.cs-lab.svc.cluster.local:4317',
   },
 });
 
